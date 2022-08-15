@@ -1,8 +1,10 @@
 #include <VulkanCore.h>
+#include <VulkanUtils.h>
 
 #include <algorithm>
 #include <functional>
 #include <iostream>
+
 
 namespace {
 
@@ -18,8 +20,8 @@ VulkanCore::VulkanCore(bool enableValidation)
     : m_validation(enableValidation)
     , m_applicationName("Vulkan Application")
 {
-
 }
+
 VulkanCore::~VulkanCore()
 {
 
@@ -79,7 +81,7 @@ VkResult VulkanCore::CreateInstance(bool enableValidation)
         instanceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(instanceExtensions.size());
         instanceCreateInfo.ppEnabledExtensionNames = instanceExtensions.data();
     }
-    
+
     if (enableValidation)
     {
         // The VK_LAYER_KHRONOS_validation contains all current validation functionality.
@@ -111,7 +113,58 @@ VkResult VulkanCore::CreateInstance(bool enableValidation)
 
 void VulkanCore::InitVulkan()
 {
-    CreateInstance(m_validation);
+    // Vulkan instance
+    VkResult err;
+    err = CreateInstance(m_validation);
+    if (err) {
+        throw("Could not create Vulkan instance : \n" + Utils::errorString(err), err);
+    }
+
+    // Physical device
+    uint32_t gpuCount = 0;
+    // Get number of available physical devices
+    VK_CHECK_RESULT(vkEnumeratePhysicalDevices(m_instance, &gpuCount, nullptr));
+    if (gpuCount == 0) {
+        throw("No device with Vulkan support found", -1);
+    }
+    // Enumerate devices
+    std::vector<VkPhysicalDevice> physicalDevices(gpuCount);
+    err = vkEnumeratePhysicalDevices(m_instance, &gpuCount, physicalDevices.data());
+    if (err) {
+        throw("Could not enumerate physical devices : \n" + Utils::errorString(err), err);
+    }
+
+    // GPU selection: defaulted to the first device for now
+    m_physicalDevice = physicalDevices[0];
+
+    // Store properties (including limits), features and memory properties of the physical device
+    vkGetPhysicalDeviceProperties(m_physicalDevice, &m_deviceProperties);
+    vkGetPhysicalDeviceFeatures(m_physicalDevice, &m_deviceFeatures);
+    vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &m_deviceMemoryProperties);
+
+    // Vulkan device creation that encapsulate functions related to a device
+    vulkanDevice = new VulkanDevice(m_physicalDevice);
+    VkResult res = vulkanDevice->CreateLogicalDevice(m_enabledFeatures, m_enabledDeviceExtensions);
+    if (res != VK_SUCCESS) {
+        throw("Could not create Vulkan device: \n" + Utils::errorString(res), res);
+    }
+    
+    m_device = vulkanDevice->logicalDevice;
+
+    // Get a graphics queue from the device
+	vkGetDeviceQueue(m_device, vulkanDevice->queueFamilyIndices.graphics, 0, &m_graphicsQueue);
+
+    // Create synchronisation objects
+    VkSemaphoreCreateInfo semaphoreCreateInfo{};
+    semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    // Create a semaphore used to synchronize image presentation
+    // Ensures that the image is displayed before we start submitting new commands to the queue
+    VK_CHECK_RESULT(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_semaphores.presentComplete));
+    // Create a semaphore used to synchronize command submission
+    // Ensures that the image is not presented until all commands have been submitted and executed
+    VK_CHECK_RESULT(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_semaphores.renderComplete));
+
 }
 
 void VulkanCore::SetupWindow()

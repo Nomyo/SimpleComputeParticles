@@ -8,6 +8,8 @@
 #include <cstdint>
 #include <vector>
 
+#include <VulkanDevice.h>
+
 class VulkanCore
 {
 public:
@@ -35,8 +37,32 @@ protected:
     std::vector<std::string> m_supportedInstanceExtensions;
 
     // Set of device extensions to be enabled for the application, to be set in the derived object
+    VkPhysicalDeviceFeatures m_enabledFeatures{};
     std::vector<const char*> m_enabledDeviceExtensions;
     std::vector<const char*> m_enabledInstanceExtensions;
+
+    // Wrapper class around device related functionality
+    VulkanDevice* vulkanDevice;
+
+    // Physical device
+    VkPhysicalDevice m_physicalDevice;
+    VkPhysicalDeviceProperties m_deviceProperties;
+    VkPhysicalDeviceFeatures m_deviceFeatures;
+    VkPhysicalDeviceMemoryProperties m_deviceMemoryProperties;
+
+    // Logical device
+    VkDevice m_device;
+
+    // Handle to the device graphics queue that command buffers are submitted to
+    VkQueue m_graphicsQueue;
+
+    // Synchronization semaphores
+    struct {
+        // Swap chain image presentation
+        VkSemaphore presentComplete;
+        // Command buffer submission and execution
+        VkSemaphore renderComplete;
+    } m_semaphores;
 
     // Settings
     bool m_validation;
