@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <VulkanDevice.h>
+#include <VulkanSwapChain.h>
 
 class VulkanCore
 {
@@ -50,11 +51,17 @@ protected:
     VkPhysicalDeviceFeatures m_deviceFeatures;
     VkPhysicalDeviceMemoryProperties m_deviceMemoryProperties;
 
+    // Wraps the swap chain to present images (framebuffers) to the windowing system
+    VulkanSwapChain m_swapChain;
+
     // Logical device
-    VkDevice m_device;
+    VkDevice m_logicalDevice;
 
     // Handle to the device graphics queue that command buffers are submitted to
     VkQueue m_graphicsQueue;
+
+    // Command buffer pool
+    VkCommandPool m_cmdPool;
 
     // Synchronization semaphores
     struct {

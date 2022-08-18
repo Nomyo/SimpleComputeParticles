@@ -142,17 +142,25 @@ void VulkanCore::InitVulkan()
     vkGetPhysicalDeviceFeatures(m_physicalDevice, &m_deviceFeatures);
     vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &m_deviceMemoryProperties);
 
+#if 0
+    // Derived examples can override this to set actual features (based on above readings) to enable for logical device creation
+    getEnabledFeatures();
+#endif
+
     // Vulkan device creation that encapsulate functions related to a device
     vulkanDevice = new VulkanDevice(m_physicalDevice);
     VkResult res = vulkanDevice->CreateLogicalDevice(m_enabledFeatures, m_enabledDeviceExtensions);
     if (res != VK_SUCCESS) {
         throw("Could not create Vulkan device: \n" + Utils::errorString(res), res);
     }
-    
-    m_device = vulkanDevice->logicalDevice;
+
+    m_logicalDevice = vulkanDevice->logicalDevice;
+
+    // Pass the necessary handle to the swapChain wrapper
+    m_swapChain.Init(m_instance, m_physicalDevice, m_logicalDevice);
 
     // Get a graphics queue from the device
-	vkGetDeviceQueue(m_device, vulkanDevice->queueFamilyIndices.graphics, 0, &m_graphicsQueue);
+    vkGetDeviceQueue(m_logicalDevice, vulkanDevice->queueFamilyIndices.graphics, 0, &m_graphicsQueue);
 
     // Create synchronisation objects
     VkSemaphoreCreateInfo semaphoreCreateInfo{};
@@ -160,11 +168,10 @@ void VulkanCore::InitVulkan()
 
     // Create a semaphore used to synchronize image presentation
     // Ensures that the image is displayed before we start submitting new commands to the queue
-    VK_CHECK_RESULT(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_semaphores.presentComplete));
+    VK_CHECK_RESULT(vkCreateSemaphore(m_logicalDevice, &semaphoreCreateInfo, nullptr, &m_semaphores.presentComplete));
     // Create a semaphore used to synchronize command submission
     // Ensures that the image is not presented until all commands have been submitted and executed
-    VK_CHECK_RESULT(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &m_semaphores.renderComplete));
-
+    VK_CHECK_RESULT(vkCreateSemaphore(m_logicalDevice, &semaphoreCreateInfo, nullptr, &m_semaphores.renderComplete));
 }
 
 void VulkanCore::SetupWindow()
@@ -181,7 +188,14 @@ void VulkanCore::SetupWindow()
 
 void VulkanCore::Prepare()
 {
-    // TODO
+    m_swapChain.InitSurface(m_pWindow);
+
+    // Create command buffer pool on Graphics Queue
+    VkCommandPoolCreateInfo cmdPoolInfo = {};
+    cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    cmdPoolInfo.queueFamilyIndex = m_swapChain.GetQueueIndex();
+    cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    VK_CHECK_RESULT(vkCreateCommandPool(m_logicalDevice, &cmdPoolInfo, nullptr, &m_cmdPool));
 }
 
 void VulkanCore::RenderLoop()
@@ -189,7 +203,11 @@ void VulkanCore::RenderLoop()
     while (!glfwWindowShouldClose(m_pWindow)) {
         glfwPollEvents();
     }
-    //vkDeviceWaitIdle(m_device);
+
+    // Flush device to make sure all resources can be freed
+    if (m_logicalDevice != VK_NULL_HANDLE) {
+        vkDeviceWaitIdle(m_logicalDevice);
+    }
 }
 
 void VulkanCore::WindowResize()
