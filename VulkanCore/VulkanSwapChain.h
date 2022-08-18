@@ -9,7 +9,7 @@ typedef struct SwapChainBuffers_Rec {
     VkImageView view;
 } SwapChainBuffer;
 
-class GLFWwindow;
+struct GLFWwindow;
 
 class VulkanSwapChain
 {

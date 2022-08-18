@@ -3,8 +3,8 @@
 int main() {
 
     VulkanCore *core = new VulkanCore(true);
-    core->InitVulkan();
     core->SetupWindow();
+    core->InitVulkan();
     core->Prepare();
     core->RenderLoop();
     delete(core);

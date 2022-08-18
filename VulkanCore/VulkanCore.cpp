@@ -52,6 +52,25 @@ VkResult VulkanCore::CreateInstance(bool enableValidation)
         }
     }
 
+    VkInstanceCreateInfo instanceCreateInfo = {};
+    instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    instanceCreateInfo.pNext = NULL;
+    instanceCreateInfo.pApplicationInfo = &appInfo;
+
+    // Surface extensions
+    uint32_t glfwExtensionCount = 0;
+    const char** glfwExtensions;
+    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+    for (auto i = 0u; i < glfwExtensionCount; ++i)
+    {
+        auto str = glfwExtensions[i];
+        m_enabledInstanceExtensions.push_back(str);
+    }
+
+    instanceCreateInfo.enabledExtensionCount = glfwExtensionCount;
+    instanceCreateInfo.ppEnabledExtensionNames = glfwExtensions;
+
     // Enabled requested instance extensions
     if (m_enabledInstanceExtensions.size() > 0)
     {
@@ -65,11 +84,6 @@ VkResult VulkanCore::CreateInstance(bool enableValidation)
             instanceExtensions.push_back(enabledExtension);
         }
     }
-
-    VkInstanceCreateInfo instanceCreateInfo = {};
-    instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    instanceCreateInfo.pNext = NULL;
-    instanceCreateInfo.pApplicationInfo = &appInfo;
 
     if (instanceExtensions.size() > 0)
     {
