@@ -1,7 +1,8 @@
 #pragma once
 
-#include <string>
+#include <iostream>
 #include <cassert>
+#include <string>
 
 #define VK_CHECK_RESULT(f) \
 {                          \

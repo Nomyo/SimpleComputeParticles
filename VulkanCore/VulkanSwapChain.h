@@ -18,12 +18,14 @@ public:
     ~VulkanSwapChain();
     void Init(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice logicalDevice);
     void InitSurface(GLFWwindow* pWindow);
+    void Create(uint32_t* width, uint32_t* height);
 
     uint32_t GetQueueIndex();
 
 private:
     VkSurfaceKHR m_surface;
     VkFormat m_colorFormat;
+    VkColorSpaceKHR m_colorSpace;
     VkSwapchainKHR m_swapChain = VK_NULL_HANDLE;
     uint32_t m_imageCount;
     std::vector<VkImage> m_images;

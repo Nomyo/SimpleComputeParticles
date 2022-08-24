@@ -60,7 +60,7 @@ protected:
     // Handle to the device graphics queue that command buffers are submitted to
     VkQueue m_graphicsQueue;
 
-    // Command buffer pool
+    // Command buffer pool on swapchain graphics queue
     VkCommandPool m_cmdPool;
 
     // Synchronization semaphores

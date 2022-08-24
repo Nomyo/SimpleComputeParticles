@@ -202,6 +202,7 @@ void VulkanCore::SetupWindow()
 
 void VulkanCore::Prepare()
 {
+    // Init swapchain surface
     m_swapChain.InitSurface(m_pWindow);
 
     // Create command buffer pool on Graphics Queue
@@ -210,6 +211,10 @@ void VulkanCore::Prepare()
     cmdPoolInfo.queueFamilyIndex = m_swapChain.GetQueueIndex();
     cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     VK_CHECK_RESULT(vkCreateCommandPool(m_logicalDevice, &cmdPoolInfo, nullptr, &m_cmdPool));
+
+    // Setup the swapchain
+    m_swapChain.Create(&m_width, &m_width);
+
 }
 
 void VulkanCore::RenderLoop()
