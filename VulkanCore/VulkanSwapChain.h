@@ -20,6 +20,8 @@ public:
     void InitSurface(GLFWwindow* pWindow);
     void Create(uint32_t* width, uint32_t* height);
 
+    uint32_t GetImageCount();
+    VkFormat GetColorFormat();
     uint32_t GetQueueIndex();
 
 private:

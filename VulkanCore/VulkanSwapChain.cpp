@@ -305,3 +305,13 @@ uint32_t VulkanSwapChain::GetQueueIndex()
 {
     return m_queueNodeIndex;
 }
+
+uint32_t VulkanSwapChain::GetImageCount()
+{
+    return m_imageCount;
+}
+
+VkFormat VulkanSwapChain::GetColorFormat()
+{
+    return m_colorFormat;
+}

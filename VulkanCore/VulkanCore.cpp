@@ -215,6 +215,8 @@ void VulkanCore::Prepare()
     // Setup the swapchain
     m_swapChain.Create(&m_width, &m_width);
 
+    SetupRenderPass();
+
 }
 
 void VulkanCore::RenderLoop()
@@ -226,6 +228,79 @@ void VulkanCore::RenderLoop()
     // Flush device to make sure all resources can be freed
     if (m_logicalDevice != VK_NULL_HANDLE) {
         vkDeviceWaitIdle(m_logicalDevice);
+    }
+}
+
+void VulkanCore::SetupRenderPass()
+{
+    VkAttachmentDescription attachments = {};
+    // Color attachment
+    attachments.format = m_swapChain.GetColorFormat();
+    attachments.samples = VK_SAMPLE_COUNT_1_BIT;
+    attachments.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    attachments.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    attachments.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    attachments.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    VkAttachmentReference colorReference = {};
+    colorReference.attachment = 0;
+    colorReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpassDescription = {};
+    subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpassDescription.colorAttachmentCount = 1;
+    subpassDescription.pColorAttachments = &colorReference;
+    subpassDescription.inputAttachmentCount = 0;
+    subpassDescription.pInputAttachments = nullptr;
+    subpassDescription.preserveAttachmentCount = 0;
+    subpassDescription.pPreserveAttachments = nullptr;
+    subpassDescription.pResolveAttachments = nullptr;
+
+    VkSubpassDependency dependency{};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.srcAccessMask = 0;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+    VkRenderPassCreateInfo renderPassInfo = {};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassInfo.attachmentCount = 1;
+    renderPassInfo.pAttachments = &attachments;
+    renderPassInfo.subpassCount = 1;
+    renderPassInfo.pSubpasses = &subpassDescription;
+    renderPassInfo.dependencyCount = 1;
+    renderPassInfo.pDependencies = &dependency;
+
+    VK_CHECK_RESULT(vkCreateRenderPass(m_logicalDevice, &renderPassInfo, nullptr, &m_renderPass));
+}
+
+void VulkanCore::CreateCommandBuffers()
+{
+    // Create one command buffer for each swap chain image and reuse for rendering
+    m_drawCmdBuffers.resize(m_swapChain.GetImageCount());
+
+    VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
+    commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    commandBufferAllocateInfo.commandPool = m_cmdPool;
+    commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    commandBufferAllocateInfo.commandBufferCount = static_cast<uint32_t>(m_drawCmdBuffers.size());
+
+    VK_CHECK_RESULT(vkAllocateCommandBuffers(m_logicalDevice, &commandBufferAllocateInfo, m_drawCmdBuffers.data()));
+}
+
+void VulkanCore::CreateSynchronizationPrimitives()
+{
+    // Wait fences to sync command buffer access
+    VkFenceCreateInfo fenceCreateInfo{};
+    fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    m_waitFences.resize(m_drawCmdBuffers.size());
+    for (auto& fence : m_waitFences) {
+        VK_CHECK_RESULT(vkCreateFence(m_logicalDevice, &fenceCreateInfo, nullptr, &fence));
     }
 }
 

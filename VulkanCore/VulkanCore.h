@@ -18,11 +18,13 @@ public:
     virtual ~VulkanCore();
 
     // Setup the vulkan instance, enable required extensions and connect to the physical device (GPU)
-    void InitVulkan();
-
-    void SetupWindow();
-    void Prepare();
-    void RenderLoop();
+    virtual void InitVulkan();
+    virtual void CreateCommandBuffers();
+    virtual void CreateSynchronizationPrimitives();
+    virtual void Prepare();
+    virtual void RenderLoop();
+    virtual void SetupRenderPass();
+    virtual void SetupWindow();
 
     // Called when the window has been resized, can be used by the sample application to recreate resources
     virtual void WindowResize();
@@ -62,6 +64,14 @@ protected:
 
     // Command buffer pool on swapchain graphics queue
     VkCommandPool m_cmdPool;
+
+    // Command buffers used for rendering
+    std::vector<VkCommandBuffer> m_drawCmdBuffers;
+
+    // Global render pass for frame buffer writes
+    VkRenderPass m_renderPass = VK_NULL_HANDLE;
+
+    std::vector<VkFence> m_waitFences;
 
     // Synchronization semaphores
     struct {
