@@ -315,3 +315,12 @@ VkFormat VulkanSwapChain::GetColorFormat()
 {
     return m_colorFormat;
 }
+
+VkImageView VulkanSwapChain::GetImageView(uint32_t index)
+{
+    if (m_buffers.size() <= index)
+    {
+        throw("Invalid image view index", -1);
+    }
+    return m_buffers[index].view;
+}

@@ -1,12 +1,12 @@
-#include <VulkanCore.h>
+#include <SlimeSimulation.h>
 
 int main() {
 
-    VulkanCore *core = new VulkanCore(true);
-    core->SetupWindow();
-    core->InitVulkan();
-    core->Prepare();
-    core->RenderLoop();
-    delete(core);
+    SlimeSimulation *simulation = new SlimeSimulation();
+    simulation->SetupWindow();
+    simulation->InitVulkan();
+    simulation->Prepare();
+    simulation->RenderLoop();
+    delete(simulation);
     return 0;
 }

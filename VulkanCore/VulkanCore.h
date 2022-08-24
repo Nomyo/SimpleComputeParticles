@@ -25,6 +25,9 @@ public:
     virtual void RenderLoop();
     virtual void SetupRenderPass();
     virtual void SetupWindow();
+    virtual void SetupFrameBuffer();
+    virtual void NextFrame();
+	virtual void Render() = 0;
 
     // Called when the window has been resized, can be used by the sample application to recreate resources
     virtual void WindowResize();
@@ -70,6 +73,9 @@ protected:
 
     // Global render pass for frame buffer writes
     VkRenderPass m_renderPass = VK_NULL_HANDLE;
+
+    // List of available frame buffers (same as number of swap chain images)
+    std::vector<VkFramebuffer> m_frameBuffers;
 
     std::vector<VkFence> m_waitFences;
 

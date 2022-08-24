@@ -215,14 +215,15 @@ void VulkanCore::Prepare()
     // Setup the swapchain
     m_swapChain.Create(&m_width, &m_width);
 
+    // Create renderPass
     SetupRenderPass();
-
 }
 
 void VulkanCore::RenderLoop()
 {
     while (!glfwWindowShouldClose(m_pWindow)) {
         glfwPollEvents();
+        NextFrame();
     }
 
     // Flush device to make sure all resources can be freed
@@ -230,6 +231,13 @@ void VulkanCore::RenderLoop()
         vkDeviceWaitIdle(m_logicalDevice);
     }
 }
+void VulkanCore::NextFrame()
+{
+    // TODO:Handler view updates camera, etc.
+
+    Render();
+}
+
 
 void VulkanCore::SetupRenderPass()
 {
@@ -276,6 +284,29 @@ void VulkanCore::SetupRenderPass()
     renderPassInfo.pDependencies = &dependency;
 
     VK_CHECK_RESULT(vkCreateRenderPass(m_logicalDevice, &renderPassInfo, nullptr, &m_renderPass));
+}
+
+void VulkanCore::SetupFrameBuffer()
+{
+    VkImageView attachments;
+
+    VkFramebufferCreateInfo frameBufferCreateInfo = {};
+    frameBufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    frameBufferCreateInfo.pNext = NULL;
+    frameBufferCreateInfo.renderPass = m_renderPass;
+    frameBufferCreateInfo.attachmentCount = 1;
+    frameBufferCreateInfo.pAttachments = &attachments;
+    frameBufferCreateInfo.width = m_width;
+    frameBufferCreateInfo.height = m_height;
+    frameBufferCreateInfo.layers = 1;
+
+    // Create frame buffers for every swap chain image
+    m_frameBuffers.resize(m_swapChain.GetImageCount());
+    for (uint32_t i = 0; i < m_frameBuffers.size(); i++)
+    {
+        attachments = m_swapChain.GetImageView(i);
+        VK_CHECK_RESULT(vkCreateFramebuffer(m_logicalDevice, &frameBufferCreateInfo, nullptr, &m_frameBuffers[i]));
+    }
 }
 
 void VulkanCore::CreateCommandBuffers()

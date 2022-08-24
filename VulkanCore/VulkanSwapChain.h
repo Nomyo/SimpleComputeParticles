@@ -23,6 +23,7 @@ public:
     uint32_t GetImageCount();
     VkFormat GetColorFormat();
     uint32_t GetQueueIndex();
+    VkImageView GetImageView(uint32_t index);
 
 private:
     VkSurfaceKHR m_surface;
