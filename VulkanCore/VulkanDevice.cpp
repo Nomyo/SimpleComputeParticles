@@ -79,6 +79,33 @@ uint32_t VulkanDevice::GetQueueFamilyIndex(VkQueueFlags queueFlags) const
     throw std::runtime_error("Could not find a matching queue family index");
 }
 
+uint32_t VulkanDevice::GetMemoryType(uint32_t typeBits, VkMemoryPropertyFlags properties, VkBool32 *memTypeFound) const
+{
+    for (auto i = 0u; i < memoryProperties.memoryTypeCount; ++i)
+    {
+        if (typeBits & (1 << i))
+        {
+            if ((memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
+            {
+                if (memTypeFound)
+                {
+                    *memTypeFound = true;
+                }
+                return i;
+            }
+        }
+    }
+    if (memTypeFound)
+    {
+        *memTypeFound = false;
+        return 0;
+    }
+    else
+    {
+        throw std::runtime_error("Could not find a matching memory type");
+    }
+}
+
 VkResult VulkanDevice::CreateLogicalDevice(VkPhysicalDeviceFeatures enabledFeatures, std::vector<const char*> enabledExtensions, bool useSwapChain, VkQueueFlags requestedQueueTypes)
 {
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos{};
@@ -201,6 +228,52 @@ VkCommandPool VulkanDevice::CreateCommandPool(uint32_t queueFamilyIndex, VkComma
     return cmdPool;
 }
 
+VkResult VulkanDevice::CreateBuffer(VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, VkBuffer *buffer, VkDeviceMemory *memory, VkDeviceSize size, void *data)
+{
+    // Create the buffer handle
+    VkBufferCreateInfo bufferCreateInfo{};
+    bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferCreateInfo.usage = usageFlags;
+    bufferCreateInfo.size = size;
+    VK_CHECK_RESULT(vkCreateBuffer(logicalDevice, &bufferCreateInfo, nullptr, buffer));
+
+    // Create the memory backing up the buffer handle
+    VkMemoryRequirements memReqs;
+    VkMemoryAllocateInfo memAlloc{};
+    memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    vkGetBufferMemoryRequirements(logicalDevice, *buffer, &memReqs);
+    memAlloc.allocationSize = memReqs.size;
+
+    // Find a memory type index that fits the properties of the buffer
+    memAlloc.memoryTypeIndex = GetMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);
+    VK_CHECK_RESULT(vkAllocateMemory(logicalDevice, &memAlloc, nullptr, memory));
+
+    // If a pointer to the buffer data has been passed, map the buffer and copy over the data
+    if (data != nullptr)
+    {
+        void *mapped;
+        VK_CHECK_RESULT(vkMapMemory(logicalDevice, *memory, 0, size, 0, &mapped));
+        memcpy(mapped, data, size);
+
+        // If host coherency hasn't been requested, do a manual flush to make writes visible
+        if ((memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0)
+        {
+            VkMappedMemoryRange mappedRange{};
+			mappedRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+            mappedRange.memory = *memory;
+            mappedRange.offset = 0;
+            mappedRange.size = size;
+            vkFlushMappedMemoryRanges(logicalDevice, 1, &mappedRange);
+        }
+        // Implicit flush if there is host coherency
+        vkUnmapMemory(logicalDevice, *memory);
+    }
+
+    // Attach the memory to the buffer object
+    VK_CHECK_RESULT(vkBindBufferMemory(logicalDevice, *buffer, *memory, 0));
+
+    return VK_SUCCESS;
+}
 
 VulkanDevice::~VulkanDevice()
 {
