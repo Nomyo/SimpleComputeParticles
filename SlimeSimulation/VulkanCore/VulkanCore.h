@@ -27,7 +27,7 @@ public:
     virtual void SetupWindow();
     virtual void SetupFrameBuffer();
     virtual void NextFrame();
-	virtual void Render() = 0;
+    virtual void Render() = 0;
 
     // Called when the window has been resized, can be used by the sample application to recreate resources
     virtual void WindowResize();
@@ -79,6 +79,12 @@ protected:
 
     std::vector<VkFence> m_waitFences;
 
+    // Descriptor set pool
+    VkDescriptorPool m_descriptorPool = VK_NULL_HANDLE;
+
+    // Default clear color
+    VkClearColorValue m_defaultClearColor = { { 0.0f, 0.0f, 0.0f, 1.0f } };
+
     // Synchronization semaphores
     struct {
         // Swap chain image presentation
@@ -86,6 +92,8 @@ protected:
         // Command buffer submission and execution
         VkSemaphore renderComplete;
     } m_semaphores;
+
+    bool m_prepared = false;
 
     // Settings
     bool m_validation;
