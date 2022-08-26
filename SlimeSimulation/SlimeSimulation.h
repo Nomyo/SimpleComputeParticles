@@ -41,7 +41,7 @@ public:
     virtual void Render();
     virtual void Prepare();
 private:
-
+    void Draw();
     void GenerateTriangle();
     void SetupVertexDescriptions();
     void SetupDescriptorSetLayout();
@@ -52,6 +52,8 @@ private:
     void BuildCommandBuffers();
 
     VkPipelineShaderStageCreateInfo LoadShader(const std::string& filepath, VkShaderStageFlagBits stage);
+
+    std::vector<VkFence> m_queueCompleteFences;
 
     BufferWrapper m_vertexBuffer;
     BufferWrapper m_indexBuffer;

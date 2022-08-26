@@ -19,6 +19,8 @@ public:
     void Init(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice logicalDevice);
     void InitSurface(GLFWwindow* pWindow);
     void Create(uint32_t* width, uint32_t* height);
+    VkResult AcquireNextImage(VkSemaphore presentCompleteSemaphore, uint32_t *imageIndex);
+    VkResult QueuePresent(VkQueue queue, uint32_t imageIndex, VkSemaphore waitSemaphore);
 
     uint32_t GetImageCount();
     VkFormat GetColorFormat();

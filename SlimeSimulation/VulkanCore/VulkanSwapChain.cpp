@@ -301,6 +301,29 @@ void VulkanSwapChain::Create(uint32_t* width, uint32_t* height)
     }
 }
 
+VkResult VulkanSwapChain::AcquireNextImage(VkSemaphore presentCompleteSemaphore, uint32_t *imageIndex)
+{
+    // By setting timeout to UINT64_MAX we will always wait until the next image has been acquired or an actual error is thrown
+    // With that we don't have to handle VK_NOT_READY
+    return vkAcquireNextImageKHR(m_logicalDevice, m_swapChain, UINT64_MAX, presentCompleteSemaphore, (VkFence)nullptr, imageIndex);
+}
+VkResult VulkanSwapChain::QueuePresent(VkQueue queue, uint32_t imageIndex, VkSemaphore waitSemaphore)
+{
+    VkPresentInfoKHR presentInfo = {};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.pNext = NULL;
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = &m_swapChain;
+    presentInfo.pImageIndices = &imageIndex;
+    // Check if a wait semaphore has been specified to wait for before presenting the image
+    if (waitSemaphore != VK_NULL_HANDLE)
+    {
+        presentInfo.pWaitSemaphores = &waitSemaphore;
+        presentInfo.waitSemaphoreCount = 1;
+    }
+    return vkQueuePresentKHR(queue, &presentInfo);
+}
+
 uint32_t VulkanSwapChain::GetQueueIndex()
 {
     return m_queueNodeIndex;

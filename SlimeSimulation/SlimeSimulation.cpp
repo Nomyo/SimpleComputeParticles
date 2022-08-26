@@ -40,7 +40,32 @@ void SlimeSimulation::Render()
     {
         return;
     }
-    //Draw();
+    Draw();
+}
+
+void SlimeSimulation::Draw()
+{
+    VulkanCore::PrepareFrame();
+
+    // Use a fence to wait until the command buffer has finished execution before using it again
+    VK_CHECK_RESULT(vkWaitForFences(m_logicalDevice, 1, &m_queueCompleteFences[m_currentBuffer], VK_TRUE, UINT64_MAX));
+    VK_CHECK_RESULT(vkResetFences(m_logicalDevice, 1, &m_queueCompleteFences[m_currentBuffer]));
+
+    VkPipelineStageFlags graphicsWaitStageMasks[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+    VkSemaphore graphicsWaitSemaphores[] = { m_semaphores.presentComplete };
+    VkSemaphore graphicsSignalSemaphores[] = { m_semaphores.renderComplete };
+
+    // Submit graphics commands
+    m_submitInfo.commandBufferCount = 1;
+    m_submitInfo.pCommandBuffers = &m_drawCmdBuffers[m_currentBuffer];
+    m_submitInfo.waitSemaphoreCount = 1;
+    m_submitInfo.pWaitSemaphores = graphicsWaitSemaphores;
+    m_submitInfo.pWaitDstStageMask = graphicsWaitStageMasks;
+    m_submitInfo.signalSemaphoreCount = 1;
+    m_submitInfo.pSignalSemaphores = graphicsSignalSemaphores;
+    VK_CHECK_RESULT(vkQueueSubmit(m_graphicsQueue, 1, &m_submitInfo, m_queueCompleteFences[m_currentBuffer]));
+
+    VulkanCore::SubmitFrame();
 }
 
 void SlimeSimulation::Prepare()
@@ -62,9 +87,9 @@ void SlimeSimulation::GenerateTriangle()
 {
     // Setup only pos vertices for now
     std::vector<Vertex>vertices = {
-        { glm::vec3(0.0, -0.5, 0.0) },
-        { glm::vec3(0.5, 0.5, 0.0)  },
-        { glm::vec3(-0.5, 0.5, 0.0) }
+        { glm::vec3(0.0f,  -.5f, 0.0f) },
+        { glm::vec3(0.5f,  .5f, 0.0f) },
+        { glm::vec3(-.5f, .5f, 0.0f) },
     };
 
     // Setup indices
@@ -132,11 +157,13 @@ void SlimeSimulation::SetupDescriptorSetLayout()
     descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     descriptorSetLayoutCreateInfo.pBindings = nullptr;
     descriptorSetLayoutCreateInfo.bindingCount = 0;
+    descriptorSetLayoutCreateInfo.pNext = nullptr;
     VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_logicalDevice, &descriptorSetLayoutCreateInfo, nullptr, &m_graphics.descriptorSetLayout));
 
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
     pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutCreateInfo.setLayoutCount = 1;
+    pipelineLayoutCreateInfo.pNext = nullptr;
     pipelineLayoutCreateInfo.pSetLayouts = &m_graphics.descriptorSetLayout;
     VK_CHECK_RESULT(vkCreatePipelineLayout(m_logicalDevice, &pipelineLayoutCreateInfo, nullptr, &m_graphics.pipelineLayout));
 }
@@ -241,6 +268,17 @@ void SlimeSimulation::PrepareGraphics()
     submitInfo.pSignalSemaphores = &m_graphics.semaphore;
     VK_CHECK_RESULT(vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE));
     VK_CHECK_RESULT(vkQueueWaitIdle(m_graphicsQueue));
+
+    // Fences (Used to check draw command buffer completion)
+    VkFenceCreateInfo fenceCreateInfo = {};
+    fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    // Create in signaled state so we don't wait on first render of each command buffer
+    fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    m_queueCompleteFences.resize(m_drawCmdBuffers.size());
+    for (auto& fence : m_queueCompleteFences)
+    {
+        VK_CHECK_RESULT(vkCreateFence(m_logicalDevice, &fenceCreateInfo, nullptr, &fence));
+    }
 }
 
 void SlimeSimulation::BuildCommandBuffers()
@@ -248,22 +286,8 @@ void SlimeSimulation::BuildCommandBuffers()
     VkCommandBufferBeginInfo cmdBufInfo{};
     cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-    VkClearValue clearValues[2];
-    clearValues[0].color = m_defaultClearColor;
-    clearValues[1].depthStencil = { 1.0f, 0 };
+    VkClearValue clearValues = { {m_defaultClearColor} };
 
-    VkRect2D scissor{};
-    scissor.extent.width = m_width;
-    scissor.extent.height = m_height;
-    scissor.offset.x = 0;
-
-    VkViewport viewport{};
-    viewport.width = (float)m_width * 0.5f;
-    viewport.height = (float)m_height;
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-
-    scissor.offset.y = 0;
     VkRenderPassBeginInfo renderPassBeginInfo{};
     renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassBeginInfo.renderPass = m_renderPass;
@@ -271,8 +295,8 @@ void SlimeSimulation::BuildCommandBuffers()
     renderPassBeginInfo.renderArea.offset.y = 0;
     renderPassBeginInfo.renderArea.extent.width = m_width;
     renderPassBeginInfo.renderArea.extent.height = m_height;
-    renderPassBeginInfo.clearValueCount = 2;
-    renderPassBeginInfo.pClearValues = clearValues;
+    renderPassBeginInfo.clearValueCount = 1;
+    renderPassBeginInfo.pClearValues = &clearValues;
 
     for (int32_t i = 0; i < m_drawCmdBuffers.size(); ++i)
     {
@@ -282,18 +306,29 @@ void SlimeSimulation::BuildCommandBuffers()
         VK_CHECK_RESULT(vkBeginCommandBuffer(m_drawCmdBuffers[i], &cmdBufInfo));
 
         vkCmdBeginRenderPass(m_drawCmdBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(m_drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphics.pipeline);
 
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = (float)m_width;
+        viewport.height = (float)m_height;
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
         vkCmdSetViewport(m_drawCmdBuffers[i], 0, 1, &viewport);
+
+        VkRect2D scissor{};
+        scissor.extent.width = m_width;
+        scissor.extent.height = m_height;
+        scissor.offset.x = 0;
+        scissor.offset.y = 0;
+
         vkCmdSetScissor(m_drawCmdBuffers[i], 0, 1, &scissor);
 
         VkDeviceSize offsets[1] = { 0 };
         vkCmdBindVertexBuffers(m_drawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &m_vertexBuffer.buffer, offsets);
         vkCmdBindIndexBuffer(m_drawCmdBuffers[i], m_indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-        vkCmdDrawIndexed(m_drawCmdBuffers[i], m_indexCount, 1, 0, 0, 0);
-
-        viewport.x = (float)m_width / 2.0f;
-        vkCmdSetViewport(m_drawCmdBuffers[i], 0, 1, &viewport);
         vkCmdDrawIndexed(m_drawCmdBuffers[i], m_indexCount, 1, 0, 0, 0);
 
         vkCmdEndRenderPass(m_drawCmdBuffers[i]);

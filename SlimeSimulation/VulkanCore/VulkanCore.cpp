@@ -186,6 +186,17 @@ void VulkanCore::InitVulkan()
     // Create a semaphore used to synchronize command submission
     // Ensures that the image is not presented until all commands have been submitted and executed
     VK_CHECK_RESULT(vkCreateSemaphore(m_logicalDevice, &semaphoreCreateInfo, nullptr, &m_semaphores.renderComplete));
+
+    // Set up submit info structure
+    // Semaphores will stay the same during application lifetime
+    // Command buffer submission info is set by each example
+    m_submitInfo = VkSubmitInfo{};
+    m_submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    m_submitInfo.pWaitDstStageMask = &m_submitPipelineStages;
+    m_submitInfo.waitSemaphoreCount = 1;
+    m_submitInfo.pWaitSemaphores = &m_semaphores.presentComplete;
+    m_submitInfo.signalSemaphoreCount = 1;
+    m_submitInfo.pSignalSemaphores = &m_semaphores.renderComplete;
 }
 
 void VulkanCore::SetupWindow()
@@ -213,10 +224,16 @@ void VulkanCore::Prepare()
     VK_CHECK_RESULT(vkCreateCommandPool(m_logicalDevice, &cmdPoolInfo, nullptr, &m_cmdPool));
 
     // Setup the swapchain
-    m_swapChain.Create(&m_width, &m_width);
+    m_swapChain.Create(&m_width, &m_height);
 
     // Create renderPass
     SetupRenderPass();
+
+    CreateCommandBuffers();
+
+    CreateSynchronizationPrimitives();
+
+    SetupFrameBuffer();
 }
 
 void VulkanCore::RenderLoop()
@@ -333,6 +350,39 @@ void VulkanCore::CreateSynchronizationPrimitives()
     for (auto& fence : m_waitFences) {
         VK_CHECK_RESULT(vkCreateFence(m_logicalDevice, &fenceCreateInfo, nullptr, &fence));
     }
+}
+
+void VulkanCore::PrepareFrame()
+{
+    // Acquire the next image from the swap chain
+    VkResult result = m_swapChain.AcquireNextImage(m_semaphores.presentComplete, &m_currentBuffer);
+    // Recreate the swapchain if it's no longer compatible with the surface (OUT_OF_DATE)
+    // SRS - If no longer optimal (VK_SUBOPTIMAL_KHR), wait until submitFrame() in case number of swapchain images will change on resize
+    if ((result == VK_ERROR_OUT_OF_DATE_KHR) || (result == VK_SUBOPTIMAL_KHR)) {
+        if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+            WindowResize();
+        }
+        return;
+    }
+    else {
+        VK_CHECK_RESULT(result);
+    }
+}
+
+void VulkanCore::SubmitFrame()
+{
+    VkResult result = m_swapChain.QueuePresent(m_graphicsQueue, m_currentBuffer, m_semaphores.renderComplete);
+    // Recreate the swapchain if it's no longer compatible with the surface (OUT_OF_DATE) or no longer optimal for presentation (SUBOPTIMAL)
+    if ((result == VK_ERROR_OUT_OF_DATE_KHR) || (result == VK_SUBOPTIMAL_KHR)) {
+        WindowResize();
+        if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+            return;
+        }
+    }
+    else {
+        VK_CHECK_RESULT(result);
+    }
+    VK_CHECK_RESULT(vkQueueWaitIdle(m_graphicsQueue));
 }
 
 void VulkanCore::WindowResize()

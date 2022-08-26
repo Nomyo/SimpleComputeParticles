@@ -27,6 +27,8 @@ public:
     virtual void SetupWindow();
     virtual void SetupFrameBuffer();
     virtual void NextFrame();
+    virtual void PrepareFrame();
+    virtual void SubmitFrame();
     virtual void Render() = 0;
 
     // Called when the window has been resized, can be used by the sample application to recreate resources
@@ -36,7 +38,7 @@ protected:
     virtual VkResult CreateInstance(bool enableValidation);
 
 protected:
-    uint32_t m_width = 1280;
+    uint32_t m_width = 1080;
     uint32_t m_height = 720;
 
     VkInstance m_instance;
@@ -76,6 +78,8 @@ protected:
 
     // List of available frame buffers (same as number of swap chain images)
     std::vector<VkFramebuffer> m_frameBuffers;
+    // Active frame buffer index
+    uint32_t m_currentBuffer = 0;
 
     std::vector<VkFence> m_waitFences;
 
@@ -84,6 +88,11 @@ protected:
 
     // Default clear color
     VkClearColorValue m_defaultClearColor = { { 0.0f, 0.0f, 0.0f, 1.0f } };
+
+    /** @brief Pipeline stages used to wait at for graphics queue submissions */
+    VkPipelineStageFlags m_submitPipelineStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    // Contains command buffers and semaphores to be presented to the queue
+    VkSubmitInfo m_submitInfo;
 
     // Synchronization semaphores
     struct {
