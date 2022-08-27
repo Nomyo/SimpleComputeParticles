@@ -45,6 +45,7 @@ void SlimeSimulation::Render()
 
 void SlimeSimulation::Draw()
 {
+    // Acquire the next image 
     VulkanCore::PrepareFrame();
 
     // Use a fence to wait until the command buffer has finished execution before using it again
@@ -65,6 +66,7 @@ void SlimeSimulation::Draw()
     m_submitInfo.pSignalSemaphores = graphicsSignalSemaphores;
     VK_CHECK_RESULT(vkQueueSubmit(m_graphicsQueue, 1, &m_submitInfo, m_queueCompleteFences[m_currentBuffer]));
 
+    // Present the Frame to the queue
     VulkanCore::SubmitFrame();
 }
 
@@ -145,9 +147,9 @@ void SlimeSimulation::SetupVertexDescriptions()
     VkPipelineVertexInputStateCreateInfo pipelineVertexInputStateCreateInfo{};
     pipelineVertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     m_vertices.inputState = pipelineVertexInputStateCreateInfo;
-    m_vertices.inputState.vertexBindingDescriptionCount = m_vertices.bindingDescriptions.size();
+    m_vertices.inputState.vertexBindingDescriptionCount = (uint32_t)m_vertices.bindingDescriptions.size();
     m_vertices.inputState.pVertexBindingDescriptions = m_vertices.bindingDescriptions.data();
-    m_vertices.inputState.vertexAttributeDescriptionCount = m_vertices.attributeDescriptions.size();
+    m_vertices.inputState.vertexAttributeDescriptionCount = (uint32_t)m_vertices.attributeDescriptions.size();
     m_vertices.inputState.pVertexAttributeDescriptions = m_vertices.attributeDescriptions.data();
 }
 
@@ -212,7 +214,7 @@ void SlimeSimulation::PreparePipelines()
     VkPipelineDynamicStateCreateInfo dynamicState{};
     dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
     dynamicState.pDynamicStates = dynamicStateEnables.data();
-    dynamicState.dynamicStateCount = dynamicStateEnables.size();
+    dynamicState.dynamicStateCount = (uint32_t)dynamicStateEnables.size();
     dynamicState.flags = 0;
 
     // Rendering pipeline
@@ -238,7 +240,7 @@ void SlimeSimulation::PreparePipelines()
     pipelineCreateInfo.pViewportState = &viewportStateCreateInfo;
     pipelineCreateInfo.pDepthStencilState = nullptr;
     pipelineCreateInfo.pDynamicState = &dynamicState;
-    pipelineCreateInfo.stageCount = shaderStages.size();
+    pipelineCreateInfo.stageCount = (uint32_t)shaderStages.size();
     pipelineCreateInfo.pStages = shaderStages.data();
 
     VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_logicalDevice, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &m_graphics.pipeline));

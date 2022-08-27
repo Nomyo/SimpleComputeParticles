@@ -228,6 +228,62 @@ VkCommandPool VulkanDevice::CreateCommandPool(uint32_t queueFamilyIndex, VkComma
     return cmdPool;
 }
 
+VkCommandBuffer VulkanDevice::CreateCommandBuffer(VkCommandBufferLevel level, VkCommandBufferUsageFlags usageFlags, bool begin)
+{
+    VkCommandBufferAllocateInfo cmdBufferAllocateInfo{};
+    cmdBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cmdBufferAllocateInfo.commandPool = commandPool;
+    cmdBufferAllocateInfo.level = level;
+    cmdBufferAllocateInfo.commandBufferCount = 1;
+
+    VkCommandBuffer cmdBuffer;
+    VK_CHECK_RESULT(vkAllocateCommandBuffers(logicalDevice, &cmdBufferAllocateInfo, &cmdBuffer));
+
+    if (begin)
+    {
+        VkCommandBufferBeginInfo cmdBufferBeginInfo{};
+        cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        cmdBufferBeginInfo.flags = usageFlags;
+        VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, &cmdBufferBeginInfo));
+    }
+    return cmdBuffer;
+}
+
+void VulkanDevice::FlushCommandBuffer(VkCommandBuffer commandBuffer, VkQueue queue, bool free)
+{
+    if (commandBuffer == VK_NULL_HANDLE)
+    {
+        return;
+    }
+
+    // Stop recording
+    VK_CHECK_RESULT(vkEndCommandBuffer(commandBuffer));
+
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+
+    // Create fence to ensure that the command buffer has finished executing
+    VkFenceCreateInfo fenceCreateInfo{};
+    fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceCreateInfo.flags = 0;
+    VkFence fence;
+    VK_CHECK_RESULT(vkCreateFence(logicalDevice, &fenceCreateInfo, nullptr, &fence));
+
+    // Submit to the queue
+    VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, fence));
+    // Wait for the fence to signal that command buffer has finished executing
+    VK_CHECK_RESULT(vkWaitForFences(logicalDevice, 1, &fence, VK_TRUE, UINT32_MAX));
+    vkDestroyFence(logicalDevice, fence, nullptr);
+
+    if (free)
+    {
+        vkFreeCommandBuffers(logicalDevice, commandPool, 1, &commandBuffer);
+    }
+}
+
+
 VkResult VulkanDevice::CreateBuffer(VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, VkBuffer *buffer, VkDeviceMemory *memory, VkDeviceSize size, void *data)
 {
     // Create the buffer handle
@@ -259,7 +315,7 @@ VkResult VulkanDevice::CreateBuffer(VkBufferUsageFlags usageFlags, VkMemoryPrope
         if ((memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0)
         {
             VkMappedMemoryRange mappedRange{};
-			mappedRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+            mappedRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
             mappedRange.memory = *memory;
             mappedRange.offset = 0;
             mappedRange.size = size;
