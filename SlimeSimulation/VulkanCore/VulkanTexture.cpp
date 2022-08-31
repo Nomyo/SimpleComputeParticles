@@ -20,7 +20,7 @@ namespace {
         VkPipelineStageFlags dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)
     {
         // Create an image barrier object
-        VkImageMemoryBarrier imageMemoryBarrier;
+        VkImageMemoryBarrier imageMemoryBarrier{};
         imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         imageMemoryBarrier.oldLayout = oldImageLayout;
         imageMemoryBarrier.newLayout = newImageLayout;
@@ -132,6 +132,24 @@ namespace {
             0, nullptr,
             1, &imageMemoryBarrier);
     }
+
+    void SetImageLayout(
+        VkCommandBuffer cmdbuffer,
+        VkImage image,
+        VkImageAspectFlags aspectMask,
+        VkImageLayout oldImageLayout,
+        VkImageLayout newImageLayout,
+        VkPipelineStageFlags srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        VkPipelineStageFlags dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)
+    {
+        VkImageSubresourceRange subresourceRange = {};
+        subresourceRange.aspectMask = aspectMask;
+        subresourceRange.baseMipLevel = 0;
+        subresourceRange.levelCount = 1;
+        subresourceRange.layerCount = 1;
+        SetImageLayout(cmdbuffer, image, oldImageLayout, newImageLayout, subresourceRange, srcStageMask, dstStageMask);
+    }
+
 } // anonymous
 
 void Texture::UpdateDescriptor()
@@ -313,7 +331,75 @@ void Texture2D::LoadFromFile(const std::string& filename, VkFormat format, Vulka
         vkDestroyBuffer(device->logicalDevice, stagingBuffer, nullptr);
     }
     else {
-        // No staging
+        // Check if this support is supported for linear tiling
+        assert(formatProperties.linearTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT);
+
+        VkImage mappableImage;
+        VkDeviceMemory mappableMemory;
+
+        VkImageCreateInfo imageCreateInfo{};
+        imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+        imageCreateInfo.format = format;
+        imageCreateInfo.extent = { m_width, m_height, 1 };
+        imageCreateInfo.mipLevels = 1;
+        imageCreateInfo.arrayLayers = 1;
+        imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+        imageCreateInfo.tiling = VK_IMAGE_TILING_LINEAR;
+        imageCreateInfo.usage = imageUsageFlags;
+        imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+        // Load mip map level 0 to linear tiling image
+        VK_CHECK_RESULT(vkCreateImage(device->logicalDevice, &imageCreateInfo, nullptr, &mappableImage));
+
+        // Get memory requirements for this image
+        // like size and alignment
+        vkGetImageMemoryRequirements(device->logicalDevice, mappableImage, &memReqs);
+        // Set memory allocation size to required memory size
+        memAllocInfo.allocationSize = memReqs.size;
+
+        // Get memory type that can be mapped to host memory
+        memAllocInfo.memoryTypeIndex = device->GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+        // Allocate host memory
+        VK_CHECK_RESULT(vkAllocateMemory(device->logicalDevice, &memAllocInfo, nullptr, &mappableMemory));
+
+        // Bind allocated image for use
+        VK_CHECK_RESULT(vkBindImageMemory(device->logicalDevice, mappableImage, mappableMemory, 0));
+
+        // Get sub resource layout
+            // Mip map count, array layer, etc.
+        VkImageSubresource subRes = {};
+        subRes.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        subRes.mipLevel = 0;
+
+        VkSubresourceLayout subResLayout;
+        void *data;
+
+        // Get sub resources layout
+        // Includes row pitch, size offsets, etc.
+        vkGetImageSubresourceLayout(device->logicalDevice, mappableImage, &subRes, &subResLayout);
+
+        // Map image memory
+        VK_CHECK_RESULT(vkMapMemory(device->logicalDevice, mappableMemory, 0, memReqs.size, 0, &data));
+
+        // Copy image data into memory
+        memcpy(data, ktxTextureData, memReqs.size);
+
+        vkUnmapMemory(device->logicalDevice, mappableMemory);
+
+
+        // Linear tiled images don't need to be staged
+        // and can be directly used as textures
+        m_image = mappableImage;
+        m_deviceMemory = mappableMemory;
+        m_imageLayout = imageLayout;
+
+        // Setup image memory barrier
+        SetImageLayout(copyCmd, m_image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED, imageLayout);
+
+        device->FlushCommandBuffer(copyCmd, copyQueue);
     }
 
     ktxTexture_Destroy(ktxTexture);

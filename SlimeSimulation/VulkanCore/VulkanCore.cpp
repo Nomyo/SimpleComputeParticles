@@ -162,19 +162,19 @@ void VulkanCore::InitVulkan()
 #endif
 
     // Vulkan device creation that encapsulate functions related to a device
-    vulkanDevice = new VulkanDevice(m_physicalDevice);
-    VkResult res = vulkanDevice->CreateLogicalDevice(m_enabledFeatures, m_enabledDeviceExtensions);
+    m_vulkanDevice = new VulkanDevice(m_physicalDevice);
+    VkResult res = m_vulkanDevice->CreateLogicalDevice(m_enabledFeatures, m_enabledDeviceExtensions);
     if (res != VK_SUCCESS) {
         throw("Could not create Vulkan device: \n" + Utils::errorString(res), res);
     }
 
-    m_logicalDevice = vulkanDevice->logicalDevice;
+    m_logicalDevice = m_vulkanDevice->logicalDevice;
 
     // Pass the necessary handle to the swapChain wrapper
     m_swapChain.Init(m_instance, m_physicalDevice, m_logicalDevice);
 
     // Get a graphics queue from the device
-    vkGetDeviceQueue(m_logicalDevice, vulkanDevice->queueFamilyIndices.graphics, 0, &m_graphicsQueue);
+    vkGetDeviceQueue(m_logicalDevice, m_vulkanDevice->queueFamilyIndices.graphics, 0, &m_graphicsQueue);
 
     // Create synchronisation objects
     VkSemaphoreCreateInfo semaphoreCreateInfo{};

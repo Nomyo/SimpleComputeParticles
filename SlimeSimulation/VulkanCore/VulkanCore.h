@@ -50,7 +50,7 @@ protected:
     std::vector<const char*> m_enabledInstanceExtensions;
 
     // Wrapper class around device related functionality
-    VulkanDevice* vulkanDevice;
+    VulkanDevice* m_vulkanDevice;
 
     // Physical device
     VkPhysicalDevice m_physicalDevice;
