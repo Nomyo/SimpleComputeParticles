@@ -269,6 +269,7 @@ void SlimeSimulation::PrepareStorageBuffers()
     std::vector<Particle> particleBuffer(PARTICLE_COUNT);
     for (auto& particle : particleBuffer) {
         particle.pos = glm::vec2(rndDist(rndEngine), rndDist(rndEngine));
+
         particle.vel = glm::vec2(rndDist(rndEngine), rndDist(rndEngine));
     }
     auto sizeParticule = sizeof(Particle);
@@ -369,7 +370,7 @@ void SlimeSimulation::UpdateUniformBuffers()
     // TODO: need to do actual update
     static float time = 0.01f;
     m_compute.ubo.time = time;
-    time += 0.001f;
+    time += 0.01f;
     memcpy(m_compute.uniformBuffer.mapped, &m_compute.ubo, sizeof(m_compute.ubo));
 }
 
@@ -592,7 +593,7 @@ void SlimeSimulation::BuildComputeCommandBuffer()
     // Dispatch the compute job
     vkCmdBindPipeline(m_compute.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_compute.pipeline);
     vkCmdBindDescriptorSets(m_compute.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_compute.pipelineLayout, 0, 1, &m_compute.descriptorSet, 0, 0);
-    vkCmdDispatch(m_compute.commandBuffer, PARTICLE_COUNT / 256, 1, 1);
+    vkCmdDispatch(m_compute.commandBuffer, PARTICLE_COUNT / 1024, 1, 1);
 
     // Add barrier to ensure that compute shader has finished writing to the buffer
     // Without this the (rendering) vertex shader may display incomplete results (partial data from last frame)

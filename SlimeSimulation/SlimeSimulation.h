@@ -8,7 +8,7 @@
 
 #define ENABLE_VALIDATION true
 
-#define PARTICLE_COUNT 256
+#define PARTICLE_COUNT 25600
 
 // SSBO particle declaration
 struct Particle {

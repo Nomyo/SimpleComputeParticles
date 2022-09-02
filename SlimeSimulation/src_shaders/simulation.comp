@@ -17,7 +17,21 @@ layout(binding = 1) uniform UBO
     uint particleCount;
 };
 
-layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+vec2 attraction(vec2 particlePos) {
+	float attractionConstant = 0.00002;
+	float attractorMass = 5;
+	vec2 attractorPos = vec2(0.0);
+
+	vec2 delta = attractorPos - particlePos;
+	float r = clamp(sqrt(dot(delta, delta)), 1.0, 10.0);
+	return normalize(normalize(delta) * attractionConstant * /*particule mass */ 0.5 * attractorMass / (r * r));
+}
+
+layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
+
+float rand(vec2 co){
+    return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+}
 
 void main()
 {
@@ -27,17 +41,21 @@ void main()
         return;
     }
 
+	vec2 attractionForce = attraction(particles[index].pos);
+
     vec2 vPos = particles[index].pos;
     vec2 vVel = normalize(particles[index].vel);
-    particles[index].vel = vVel;
+    particles[index].vel = clamp(vVel + attractionForce / 1000, vec2(-1.0,-1.0), vec2(1.0,1.0));
 
+	float w = index;
+	float rand = index % 3 == 0 ? -rand(vec2(w, time)) : rand(vec2(w, time));
     // collide with boundary
     if ((vPos.x < -1.0) || (vPos.x > 1.0)) {
-        particles[index].vel = vec2(-vVel.x, vVel.y);
+        particles[index].vel = vec2(-vVel.x, vVel.y * rand);
     }
     else if ((vPos.y < -1.0) || (vPos.y > 1.0)) {
-        particles[index].vel = vec2(vVel.x, -vVel.y);
+        particles[index].vel = vec2(vVel.x * rand, -vVel.y);
     }
-    particles[index].pos += particles[index].vel * 0.0003;
+    particles[index].pos += particles[index].vel * 0.00005;
 
 }
