@@ -323,15 +323,24 @@ void SlimeSimulation::PrepareStorageBuffers()
 
     // Attribute descriptions
     // Describes memory layout and shader positions
-    VkVertexInputAttributeDescription vInputPositionAttribDescription{};
-    vInputPositionAttribDescription.location = 0;
-    vInputPositionAttribDescription.binding = VERTEX_BUFFER_BIND_ID;
-    vInputPositionAttribDescription.format = VK_FORMAT_R32G32_SFLOAT;
-    vInputPositionAttribDescription.offset = offsetof(Particle, pos);
+    VkVertexInputAttributeDescription vInputPositionAttribDescriptionPosition{};
+    vInputPositionAttribDescriptionPosition.location = 0;
+    vInputPositionAttribDescriptionPosition.binding = VERTEX_BUFFER_BIND_ID;
+    vInputPositionAttribDescriptionPosition.format = VK_FORMAT_R32G32_SFLOAT;
+    vInputPositionAttribDescriptionPosition.offset = offsetof(Particle, pos);
+
+    VkVertexInputAttributeDescription vInputPositionAttribDescriptionVelocity{};
+    vInputPositionAttribDescriptionVelocity.location = 1;
+    vInputPositionAttribDescriptionVelocity.binding = VERTEX_BUFFER_BIND_ID;
+    vInputPositionAttribDescriptionVelocity.format = VK_FORMAT_R32G32_SFLOAT;
+    vInputPositionAttribDescriptionVelocity.offset = offsetof(Particle, vel);
 
     m_vertices.attributeDescriptions = {
         // Location 0: Position
-        vInputPositionAttribDescription
+        vInputPositionAttribDescriptionPosition,
+
+        // Location 1: Velocity
+        vInputPositionAttribDescriptionVelocity
     };
 
     // Assign to vertex buffer
@@ -367,10 +376,17 @@ void SlimeSimulation::PrepareUniformBuffers()
 
 void SlimeSimulation::UpdateUniformBuffers()
 {
-    // TODO: need to do actual update
-    static float time = 0.01f;
-    m_compute.ubo.time = time;
-    time += 0.01f;
+    static float timer = 0.0;
+    static float timerSpeed = 0.25;
+    timer += timerSpeed * m_frameTimer * 0.7;
+    if (timer > 1.0)
+    {
+        timer -= 1.0f;
+    }
+
+    m_compute.ubo.elapsedTime = m_frameTimer / 10;// m_frameTimer;
+    m_compute.ubo.destX = sin(glm::radians(timer * 360.0f)) * 0.75f;
+    m_compute.ubo.destY = 0.0f;
     memcpy(m_compute.uniformBuffer.mapped, &m_compute.ubo, sizeof(m_compute.ubo));
 }
 

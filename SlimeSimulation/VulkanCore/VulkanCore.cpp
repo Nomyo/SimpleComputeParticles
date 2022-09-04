@@ -5,8 +5,9 @@
 #include <functional>
 #include <iostream>
 
-
+#include <chrono>
 namespace {
+
 
     void framebufferResizeCallback(GLFWwindow* window, int width, int height)
     {
@@ -238,8 +239,13 @@ void VulkanCore::Prepare()
 
 void VulkanCore::RenderLoop()
 {
+
+    m_lastTimestamp = std::chrono::high_resolution_clock::now();
+    m_tPrevEnd = m_lastTimestamp;
+
     while (!glfwWindowShouldClose(m_pWindow)) {
         glfwPollEvents();
+
         NextFrame();
     }
 
@@ -252,7 +258,24 @@ void VulkanCore::NextFrame()
 {
     // TODO:Handler view updates camera, etc.
 
+    auto tStart = std::chrono::high_resolution_clock::now();
+
     Render();
+    m_frameCounter++;
+
+    auto tEnd = std::chrono::high_resolution_clock::now();
+    auto tDiff = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
+    m_frameTimer = (float)tDiff / 1000.0f;
+
+    float fpsTimer = (float)(std::chrono::duration<double, std::milli>(tEnd - m_lastTimestamp).count());
+    if (fpsTimer > 1000.0f)
+    {
+        m_lastFPS = static_cast<uint32_t>((float)m_frameCounter * (1000.0f / fpsTimer));
+        std::cout << m_lastFPS << std::endl; // should be UI
+        m_frameCounter = 0;
+        m_lastTimestamp = tEnd;
+    }
+    m_tPrevEnd = tEnd;
 }
 
 

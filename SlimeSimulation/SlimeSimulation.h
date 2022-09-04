@@ -8,7 +8,7 @@
 
 #define ENABLE_VALIDATION true
 
-#define PARTICLE_COUNT 25600
+#define PARTICLE_COUNT 1024*1024
 
 // SSBO particle declaration
 struct Particle {
@@ -55,7 +55,9 @@ public:
         BufferWrapper uniformBuffer;
         VkSemaphore semaphore;                      // Execution dependency between compute & graphic submission
         struct computeUbo {
-            float time;
+            float elapsedTime;
+            float destX;
+            float destY;
             uint32_t particleCount = PARTICLE_COUNT;
         } ubo;
     } m_compute;
@@ -78,9 +80,7 @@ private:
 
     void Draw();
     void LoadAssets();
-    void GenerateTriangle();
 
-    void SetupVertexDescriptions();
     void SetupDescriptorSetLayout();
     void SetupDescriptorPool();
     void SetupDescriptorSet();

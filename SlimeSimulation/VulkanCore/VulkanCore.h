@@ -6,6 +6,7 @@
 #include <GLFW/glfw3.h>
 
 #include <cstdint>
+#include <chrono>
 #include <vector>
 
 #include <VulkanDevice.h>
@@ -38,8 +39,17 @@ protected:
     virtual VkResult CreateInstance(bool enableValidation);
 
 protected:
-    uint32_t m_width = 1080;
-    uint32_t m_height = 720;
+    uint32_t m_width = 1920;
+    uint32_t m_height = 1200;
+
+    // Frame counter to display fps
+    uint32_t m_frameCounter = 0;
+    uint32_t m_lastFPS = 0;
+    std::chrono::time_point<std::chrono::high_resolution_clock> m_lastTimestamp;
+    std::chrono::time_point<std::chrono::high_resolution_clock> m_tPrevEnd;
+
+    // Last frame time measured using a high performance timer (if available)
+    float  m_frameTimer = 1.0f;
 
     VkInstance m_instance;
     std::vector<std::string> m_supportedInstanceExtensions;
