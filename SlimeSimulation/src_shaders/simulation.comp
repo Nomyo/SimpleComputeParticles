@@ -20,7 +20,7 @@ layout(binding = 1) uniform UBO
 } ubo;
 
 vec2 attraction(vec2 particlePos) {
-    float attractionConstant = 0.2;
+    float attractionConstant = 0.35;
     float attractorMass = 55;
     float massParticle = 10;
     vec2 attractorPos = vec2(ubo.destX, ubo.destY);
@@ -44,7 +44,7 @@ void main()
         return;
     }
 
-    float massParticle = 10;
+    float massParticle = 12;
 
     vec2 attractionForce = attraction(particles[index].pos);
     vec2 acceleration = attractionForce / massParticle;

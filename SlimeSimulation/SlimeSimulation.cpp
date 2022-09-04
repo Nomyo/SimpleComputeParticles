@@ -376,9 +376,9 @@ void SlimeSimulation::PrepareUniformBuffers()
 
 void SlimeSimulation::UpdateUniformBuffers()
 {
-    static float timer = 0.0;
-    static float timerSpeed = 0.25;
-    timer += timerSpeed * m_frameTimer * 0.7;
+    static float timer = 0.0f;
+    static float timerSpeed = 0.2f;
+    timer += timerSpeed * m_frameTimer * 0.7f;
     if (timer > 1.0)
     {
         timer -= 1.0f;
@@ -386,7 +386,7 @@ void SlimeSimulation::UpdateUniformBuffers()
 
     m_compute.ubo.elapsedTime = m_frameTimer / 10;// m_frameTimer;
     m_compute.ubo.destX = sin(glm::radians(timer * 360.0f)) * 0.75f;
-    m_compute.ubo.destY = 0.0f;
+    m_compute.ubo.destY = sin(glm::radians(timer * 360.0f)*2.5f) * 0.25f;
     memcpy(m_compute.uniformBuffer.mapped, &m_compute.ubo, sizeof(m_compute.ubo));
 }
 
