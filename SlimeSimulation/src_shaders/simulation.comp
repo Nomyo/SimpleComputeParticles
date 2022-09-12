@@ -20,22 +20,16 @@ layout(binding = 1) uniform UBO
 } ubo;
 
 vec2 attraction(vec2 particlePos) {
-    float attractionConstant = 0.35;
+    float attractionConstant = 15.45;
     float attractorMass = 55;
-    float massParticle = 10;
     vec2 attractorPos = vec2(ubo.destX, ubo.destY);
 
     vec2 delta = attractorPos - particlePos;
-    float r = clamp(sqrt(dot(delta, delta)), 0.2, 10.0);
-    return normalize(delta) * attractionConstant * massParticle * attractorMass / (r * r);
+    float r = clamp(sqrt(dot(delta, delta)), 0.5, 10.0);
+    return normalize(delta) * attractionConstant * attractorMass / (r * r);
 }
 
 layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
-
-float rand(vec2 co){
-    return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
-}
-
 void main()
 {
     // 1D workload 
@@ -44,24 +38,29 @@ void main()
         return;
     }
 
-    float massParticle = 12;
+    float massParticle = 25;
 
     vec2 attractionForce = attraction(particles[index].pos);
-    vec2 acceleration = attractionForce / massParticle;
+    vec2 acceleration = attractionForce;
 
     vec2 vPos = particles[index].pos;
     vec2 vVel = particles[index].vel;
 
     particles[index].vel = vVel + acceleration * ubo.elapsedTime;
 
+	particles[index].vel.x = clamp(particles[index].vel.x, -35.0, 35.0);
+	particles[index].vel.y = clamp(particles[index].vel.y, -35.0, 35.0);
+
+	particles[index].pos += vVel * ubo.elapsedTime + 1 / 2 * acceleration * ubo.elapsedTime * ubo.elapsedTime;
+	vec2 newPos = particles[index].pos;
     // collide with boundary
-    if ((vPos.x < -1.0) || (vPos.x > 1.0)) {
-        particles[index].vel = vec2(-particles[index].vel.x, particles[index].vel.y) * 0.2;
-        vVel = vec2(-vVel.x, vVel.y);
+	float slowFactor = 0.8;
+    if ((newPos.x < -1.0) || (newPos.x > 1.0)) {
+        particles[index].vel = vec2(-particles[index].vel.x, particles[index].vel.y) * slowFactor;
+		particles[index].pos = vPos + vec2(-vVel.x, vVel.y) * ubo.elapsedTime + 1 / 2 * acceleration * ubo.elapsedTime * ubo.elapsedTime;
     }
-    else if ((vPos.y < -1.0) || (vPos.y > 1.0)) {
-        particles[index].vel = vec2(particles[index].vel.x, -particles[index].vel.y) * 0.2;
-        vVel = vec2(vVel.x, -vVel.y);
+    else if ((newPos.y < -1.0) || (newPos.y > 1.0)) {
+        particles[index].vel = vec2(particles[index].vel.x, -particles[index].vel.y) * slowFactor;
+		particles[index].pos = vPos + vec2(vVel.x, -vVel.y) * ubo.elapsedTime + 1 / 2 * acceleration * ubo.elapsedTime * ubo.elapsedTime;
     }
-    particles[index].pos += vVel * ubo.elapsedTime + 1 / 2 * acceleration * ubo.elapsedTime * ubo.elapsedTime;
 }

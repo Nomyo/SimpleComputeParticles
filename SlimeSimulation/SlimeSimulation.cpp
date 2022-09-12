@@ -12,29 +12,10 @@
 #include <fstream>
 #include <random>
 
-namespace
-{
-    std::vector<char> ReadFile(const std::string& filepath)
-    {
-        std::ifstream file(filepath, std::ios::ate | std::ios::binary);
-
-        if (!file.is_open()) {
-            throw std::runtime_error("Failed to open file!");
-        }
-
-        size_t fileSize = file.tellg();
-        std::vector<char> ucode(fileSize);
-
-        file.seekg(0);
-        file.read(ucode.data(), fileSize);
-        file.close();
-        return ucode;
-    }
-
-} // anonymous
-
 SlimeSimulation::SlimeSimulation() : VulkanCore(ENABLE_VALIDATION)
-{ }
+{
+    m_attractorMouse = false;
+}
 
 void SlimeSimulation::Render()
 {
@@ -184,8 +165,8 @@ void SlimeSimulation::PreparePipelines()
     // Load shaders
     std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages;
 
-    shaderStages[0] = LoadShader("shaders/particle_vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-    shaderStages[1] = LoadShader("shaders/particle_frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+    shaderStages[0] = Utils::LoadShader(m_logicalDevice, "shaders/particle_vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+    shaderStages[1] = Utils::LoadShader(m_logicalDevice, "shaders/particle_frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
     VkGraphicsPipelineCreateInfo pipelineCreateInfo{};
     pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -384,9 +365,20 @@ void SlimeSimulation::UpdateUniformBuffers()
         timer -= 1.0f;
     }
 
-    m_compute.ubo.elapsedTime = m_frameTimer / 10;// m_frameTimer;
-    m_compute.ubo.destX = sin(glm::radians(timer * 360.0f)) * 0.75f;
-    m_compute.ubo.destY = sin(glm::radians(timer * 360.0f)*2.5f) * 0.25f;
+    m_compute.ubo.elapsedTime = m_frameTimer / 25;
+    if (!m_attractorMouse)
+    {
+        m_compute.ubo.destX = sin(glm::radians(timer * 360.0f)) * 0.75f;
+        m_compute.ubo.destY = sin(glm::radians(timer * 360.0f)*2.5f) * 0.25f;
+    }
+    else
+    {
+        float normalizedMx = (m_mousePosX - static_cast<float>(m_width / 2)) / static_cast<float>(m_width / 2);
+        float normalizedMy = (m_mousePosY - static_cast<float>(m_height / 2)) / static_cast<float>(m_height / 2);
+        m_compute.ubo.destX = normalizedMx;
+        m_compute.ubo.destY = normalizedMy;
+    }
+
     memcpy(m_compute.uniformBuffer.mapped, &m_compute.ubo, sizeof(m_compute.ubo));
 }
 
@@ -499,7 +491,7 @@ void SlimeSimulation::PrepareCompute()
     computePipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
     computePipelineCreateInfo.layout = m_compute.pipelineLayout;
     computePipelineCreateInfo.flags = 0;
-    computePipelineCreateInfo.stage = LoadShader("shaders/simulation_comp.spv", VK_SHADER_STAGE_COMPUTE_BIT);
+    computePipelineCreateInfo.stage = Utils::LoadShader(m_logicalDevice, "shaders/simulation_comp.spv", VK_SHADER_STAGE_COMPUTE_BIT);
     VK_CHECK_RESULT(vkCreateComputePipelines(m_logicalDevice, nullptr, 1, &computePipelineCreateInfo, nullptr, &m_compute.pipeline));
 
     VkCommandPoolCreateInfo computeCommandPoolCreateInfo{};
@@ -570,6 +562,8 @@ void SlimeSimulation::BuildCommandBuffers()
         vkCmdBindVertexBuffers(m_drawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &m_compute.storageBuffer.buffer, offsets);
         vkCmdDraw(m_drawCmdBuffers[i], PARTICLE_COUNT, 1, 0, 0);
 
+        DrawUI(m_drawCmdBuffers[i]);
+
         vkCmdEndRenderPass(m_drawCmdBuffers[i]);
 
         VK_CHECK_RESULT(vkEndCommandBuffer(m_drawCmdBuffers[i]));
@@ -638,24 +632,7 @@ void SlimeSimulation::BuildComputeCommandBuffer()
     vkEndCommandBuffer(m_compute.commandBuffer);
 }
 
-VkPipelineShaderStageCreateInfo SlimeSimulation::LoadShader(const std::string& filepath, VkShaderStageFlagBits stage)
+void SlimeSimulation::OnUpdateUIOverlay(VulkanIamGuiWrapper *uiWrapper)
 {
-    auto ucode = ReadFile(filepath);
-    VkShaderModuleCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfo.codeSize = ucode.size();
-    createInfo.pCode = reinterpret_cast<const uint32_t*>(ucode.data());
-
-    VkShaderModule shaderModule;
-    if (vkCreateShaderModule(m_logicalDevice, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create shader module");
-    }
-
-    VkPipelineShaderStageCreateInfo shaderStageInfo{};
-    shaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    shaderStageInfo.stage = stage;
-    shaderStageInfo.module = shaderModule;
-    shaderStageInfo.pName = "main";
-
-    return shaderStageInfo;
+    uiWrapper->CheckBox("Attach attractor to cursor", &m_attractorMouse);
 }

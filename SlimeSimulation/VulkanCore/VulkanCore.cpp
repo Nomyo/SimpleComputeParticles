@@ -1,18 +1,25 @@
 #include <VulkanCore.h>
 #include <VulkanUtils.h>
 
+#include <imgui.h>
+
 #include <algorithm>
+#include <chrono>
 #include <functional>
 #include <iostream>
 
-#include <chrono>
 namespace {
-
 
     void framebufferResizeCallback(GLFWwindow* window, int width, int height)
     {
         auto app = reinterpret_cast<VulkanCore*>(glfwGetWindowUserPointer(window));
         app->WindowResize();
+    }
+
+    void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+    {
+        auto app = reinterpret_cast<VulkanCore*>(glfwGetWindowUserPointer(window));
+        app->MouseButtonCallback(window, button, action, mods);
     }
 
 } // anomymous
@@ -200,15 +207,35 @@ void VulkanCore::InitVulkan()
     m_submitInfo.pSignalSemaphores = &m_semaphores.renderComplete;
 }
 
+void VulkanCore::MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+{
+    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+    {
+        m_mouseButtons.right = true;
+    }
+    else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE)
+    {
+        m_mouseButtons.right = false;
+    }
+    else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+    {
+        m_mouseButtons.left = true;
+    }
+    else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
+    {
+        m_mouseButtons.left = false;
+    }
+}
+
 void VulkanCore::SetupWindow()
 {
     glfwInit();
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-    m_pWindow = glfwCreateWindow(m_width, m_height, "Vulkan", nullptr, nullptr);
+    m_pWindow = glfwCreateWindow(m_width, m_height, "Basic Newton Physics particles", nullptr, nullptr);
     glfwSetWindowUserPointer(m_pWindow, this);
-
+    glfwSetMouseButtonCallback(m_pWindow, mouseButtonCallback);
     glfwSetFramebufferSizeCallback(m_pWindow, framebufferResizeCallback);
 }
 
@@ -235,6 +262,15 @@ void VulkanCore::Prepare()
     CreateSynchronizationPrimitives();
 
     SetupFrameBuffer();
+
+    UI.device = m_vulkanDevice;
+    UI.queue = m_graphicsQueue;
+    UI.shaders = {
+        Utils::LoadShader(m_logicalDevice, "shaders/ui_vert.spv", VK_SHADER_STAGE_VERTEX_BIT),
+        Utils::LoadShader(m_logicalDevice, "shaders/ui_frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT),
+    };
+    UI.PrepareResources();
+    UI.PreparePipeline(m_renderPass);
 }
 
 void VulkanCore::RenderLoop()
@@ -254,8 +290,11 @@ void VulkanCore::RenderLoop()
         vkDeviceWaitIdle(m_logicalDevice);
     }
 }
+
 void VulkanCore::NextFrame()
 {
+    glfwGetCursorPos(m_pWindow, &m_mousePosX, &m_mousePosY);
+
     // TODO:Handler view updates camera, etc.
 
     auto tStart = std::chrono::high_resolution_clock::now();
@@ -271,13 +310,13 @@ void VulkanCore::NextFrame()
     if (fpsTimer > 1000.0f)
     {
         m_lastFPS = static_cast<uint32_t>((float)m_frameCounter * (1000.0f / fpsTimer));
-        std::cout << m_lastFPS << std::endl; // should be UI
         m_frameCounter = 0;
         m_lastTimestamp = tEnd;
     }
     m_tPrevEnd = tEnd;
-}
 
+    UpdateUI();
+}
 
 void VulkanCore::SetupRenderPass()
 {
@@ -406,6 +445,65 @@ void VulkanCore::SubmitFrame()
         VK_CHECK_RESULT(result);
     }
     VK_CHECK_RESULT(vkQueueWaitIdle(m_graphicsQueue));
+}
+
+void VulkanCore::BuildCommandBuffers()
+{}
+
+void VulkanCore::UpdateUI()
+{
+    ImGuiIO& io = ImGui::GetIO();
+
+    io.DisplaySize = ImVec2((float)m_width, (float)m_height);
+    io.DeltaTime = m_frameTimer;
+
+    io.MousePos = ImVec2((float)m_mousePosX, (float)m_mousePosY);
+    io.MouseDown[0] = m_mouseButtons.left && UI.visible;
+    io.MouseDown[1] = m_mouseButtons.right && UI.visible;
+    io.MouseDown[2] = m_mouseButtons.middle && UI.visible;
+
+    ImGui::NewFrame();
+
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(300, 300), ImGuiCond_FirstUseEver);
+    ImGui::Begin("Particles", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove);
+
+    ImGui::TextUnformatted(m_deviceProperties.deviceName);
+    ImGui::Text("%.2f ms/frame (%.1d fps)", (1000.0f / m_lastFPS), m_lastFPS);
+
+    OnUpdateUIOverlay(&UI);
+
+    ImGui::End();
+    ImGui::Render();
+
+    if (UI.UpdateBuffers() || UI.updated) {
+        BuildCommandBuffers();
+        UI.updated = false;
+    }
+}
+
+void VulkanCore::OnUpdateUIOverlay(VulkanIamGuiWrapper *uiWrapper)
+{}
+
+void VulkanCore::DrawUI(const VkCommandBuffer commandBuffer)
+{
+    if (UI.visible) {
+        VkViewport viewport{};
+        viewport.width = static_cast<float>(m_width);
+        viewport.height = static_cast<float>(m_height);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+
+        VkRect2D scissor{};
+        scissor.extent.width = m_width;
+        scissor.extent.height = m_height;
+        scissor.offset.x = 0;
+        scissor.offset.y = 0;
+        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+        UI.Draw(commandBuffer);
+    }
 }
 
 void VulkanCore::WindowResize()

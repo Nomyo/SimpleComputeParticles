@@ -4,12 +4,14 @@
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
 
 #include <cstdint>
 #include <chrono>
 #include <vector>
 
 #include <VulkanDevice.h>
+#include <VulkanImguiWrapper.h>
 #include <VulkanSwapChain.h>
 
 class VulkanCore
@@ -20,6 +22,7 @@ public:
 
     // Setup the vulkan instance, enable required extensions and connect to the physical device (GPU)
     virtual void InitVulkan();
+    virtual void BuildCommandBuffers();
     virtual void CreateCommandBuffers();
     virtual void CreateSynchronizationPrimitives();
     virtual void Prepare();
@@ -32,12 +35,16 @@ public:
     virtual void SubmitFrame();
     virtual void Render() = 0;
 
+    virtual void UpdateUI();
+    virtual void DrawUI(const VkCommandBuffer commandBuffer);
+
     // Called when the window has been resized, can be used by the sample application to recreate resources
     virtual void WindowResize();
+    virtual void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 
 protected:
     virtual VkResult CreateInstance(bool enableValidation);
-
+    virtual void OnUpdateUIOverlay(VulkanIamGuiWrapper* ui);
 protected:
     uint32_t m_width = 1920;
     uint32_t m_height = 1200;
@@ -101,8 +108,12 @@ protected:
 
     /** @brief Pipeline stages used to wait at for graphics queue submissions */
     VkPipelineStageFlags m_submitPipelineStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
     // Contains command buffers and semaphores to be presented to the queue
     VkSubmitInfo m_submitInfo;
+
+    // Ui wrapper
+    VulkanIamGuiWrapper UI;
 
     // Synchronization semaphores
     struct {
@@ -111,6 +122,14 @@ protected:
         // Command buffer submission and execution
         VkSemaphore renderComplete;
     } m_semaphores;
+
+    struct {
+        bool left = false;
+        bool right = false;
+        bool middle = false;
+    } m_mouseButtons;
+    double m_mousePosX;
+    double m_mousePosY;
 
     bool m_prepared = false;
 

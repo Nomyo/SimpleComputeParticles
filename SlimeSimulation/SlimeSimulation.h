@@ -8,7 +8,7 @@
 
 #define ENABLE_VALIDATION true
 
-#define PARTICLE_COUNT 1024*1024
+#define PARTICLE_COUNT 256000 * 4  
 
 // SSBO particle declaration
 struct Particle {
@@ -85,16 +85,18 @@ private:
     void SetupDescriptorPool();
     void SetupDescriptorSet();
 
-    void BuildCommandBuffers();
+    virtual void BuildCommandBuffers();
     void BuildComputeCommandBuffer();
     void UpdateUniformBuffers();
 
-    VkPipelineShaderStageCreateInfo LoadShader(const std::string& filepath, VkShaderStageFlagBits stage);
+    virtual void OnUpdateUIOverlay(VulkanIamGuiWrapper* ui);
 
     std::vector<VkFence> m_queueCompleteFences;
 
     BufferWrapper m_vertexBuffer;
     BufferWrapper m_indexBuffer;
+
+    bool m_attractorMouse;
 
     uint32_t m_indexCount;
 };

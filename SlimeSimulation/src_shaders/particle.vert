@@ -14,10 +14,9 @@ out gl_PerVertex
 };
 
 void main() {
-    gl_PointSize = .1;
+    gl_PointSize = 0.1;
     gl_Position = vec4(inPosition.xy, 0.0, 1.0);
 
-	float velocityFactor = length(inVel * 0.2);
-    fragColor = vec4(velocityFactor *1.5* 0.254, velocityFactor * 0.988, velocityFactor * 0.788, 1.0);
-    //fragColor = vec4(65./255.,252./255.,201./255.,1.0);//vec4(abs(sin(inPosition.x)), 0.4f,inPosition.y, 1.0f);
+    float velocityFactor = length(inVel * 0.2);
+    fragColor = vec4(velocityFactor *1.1* 0.234, velocityFactor * 0.988, velocityFactor * 0.788, 1.0);
 }
