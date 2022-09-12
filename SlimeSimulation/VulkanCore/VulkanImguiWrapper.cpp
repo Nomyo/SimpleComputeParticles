@@ -24,6 +24,28 @@ VulkanIamGuiWrapper::~VulkanIamGuiWrapper()
     }
 }
 
+void VulkanIamGuiWrapper::CleanUp()
+{
+    // Delete buffers
+    vkFreeMemory(device->logicalDevice, vertexMemory, nullptr);
+    vkDestroyBuffer(device->logicalDevice, vertexBuffer, nullptr);
+    vkFreeMemory(device->logicalDevice, indexMemory, nullptr);
+    vkDestroyBuffer(device->logicalDevice, indexBuffer, nullptr);
+
+    // Delete images
+    vkFreeMemory(device->logicalDevice, fontMemory, nullptr);
+    vkDestroyImageView(device->logicalDevice, fontImageView, nullptr);
+    vkDestroyImage(device->logicalDevice, fontImage, nullptr);
+    vkDestroySampler(device->logicalDevice, sampler, nullptr);
+
+    // Delete pools / pipeline
+    vkFreeDescriptorSets(device->logicalDevice, descriptorPool, 1, &descriptorSet);
+    vkDestroyDescriptorSetLayout(device->logicalDevice, descriptorSetLayout, nullptr);
+    vkDestroyDescriptorPool(device->logicalDevice, descriptorPool, nullptr);
+    vkDestroyPipelineLayout(device->logicalDevice, pipelineLayout, nullptr);
+    vkDestroyPipeline(device->logicalDevice, pipeline, nullptr);
+}
+
 void VulkanIamGuiWrapper::PrepareResources()
 {
     ImGuiIO& io = ImGui::GetIO();

@@ -16,6 +16,7 @@ class VulkanSwapChain
 public:
     VulkanSwapChain();
     ~VulkanSwapChain();
+    void CleanUp();
     void Init(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice logicalDevice);
     void InitSurface(GLFWwindow* pWindow);
     void Create(uint32_t* width, uint32_t* height);

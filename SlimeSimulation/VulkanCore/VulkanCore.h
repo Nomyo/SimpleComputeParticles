@@ -19,6 +19,7 @@ class VulkanCore
 public:
     VulkanCore(bool enableValidation = false);
     virtual ~VulkanCore();
+    virtual void CleanUp();
 
     // Setup the vulkan instance, enable required extensions and connect to the physical device (GPU)
     virtual void InitVulkan();
@@ -113,7 +114,7 @@ protected:
     VkSubmitInfo m_submitInfo;
 
     // Ui wrapper
-    VulkanIamGuiWrapper UI;
+    VulkanIamGuiWrapper m_ui;
 
     // Synchronization semaphores
     struct {

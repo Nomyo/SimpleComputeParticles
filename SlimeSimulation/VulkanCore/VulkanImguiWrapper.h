@@ -46,6 +46,7 @@ struct VulkanIamGuiWrapper
     VulkanIamGuiWrapper();
     ~VulkanIamGuiWrapper();
 
+    void CleanUp();
     void PrepareResources();
     void PreparePipeline(const VkRenderPass renderPass);
     bool UpdateBuffers();

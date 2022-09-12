@@ -67,6 +67,7 @@ public:
     } m_textures;
 
     SlimeSimulation();
+    virtual ~SlimeSimulation();
 
     virtual void Render();
     virtual void Prepare();

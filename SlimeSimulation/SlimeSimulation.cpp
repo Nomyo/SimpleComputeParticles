@@ -17,6 +17,45 @@ SlimeSimulation::SlimeSimulation() : VulkanCore(ENABLE_VALIDATION)
     m_attractorMouse = false;
 }
 
+SlimeSimulation::~SlimeSimulation()
+{
+    // Delete buffers
+    vkFreeMemory(m_logicalDevice, m_vertexBuffer.memory, nullptr);
+    vkDestroyBuffer(m_logicalDevice, m_vertexBuffer.buffer, nullptr);
+    vkFreeMemory(m_logicalDevice, m_indexBuffer.memory, nullptr);
+    vkDestroyBuffer(m_logicalDevice, m_indexBuffer.buffer, nullptr);
+
+    // Destroy fences
+    for (auto& fence : m_queueCompleteFences) {
+        vkDestroyFence(m_logicalDevice, fence, nullptr);
+    }
+
+    // Destroy textures
+    m_textures.particle.Destroy();
+
+    // Destroy compute
+    vkFreeMemory(m_logicalDevice, m_compute.storageBuffer.memory, nullptr);
+    vkDestroyBuffer(m_logicalDevice, m_compute.storageBuffer.buffer, nullptr);
+    vkFreeMemory(m_logicalDevice, m_compute.uniformBuffer.memory, nullptr);
+    vkDestroyBuffer(m_logicalDevice, m_compute.uniformBuffer.buffer, nullptr);
+
+    vkDestroyDescriptorSetLayout(m_logicalDevice, m_compute.descriptorSetLayout, nullptr);
+    vkDestroySemaphore(m_logicalDevice, m_compute.semaphore, nullptr);
+
+    vkDestroyPipelineLayout(m_logicalDevice, m_compute.pipelineLayout, nullptr);
+    vkDestroyPipeline(m_logicalDevice, m_compute.pipeline, nullptr);
+
+    vkFreeCommandBuffers(m_logicalDevice, m_compute.commandPool, 1, &m_compute.commandBuffer);
+    vkDestroyCommandPool(m_logicalDevice, m_compute.commandPool, nullptr);
+
+    // Destroy graphics
+    vkDestroyDescriptorSetLayout(m_logicalDevice, m_graphics.descriptorSetLayout, nullptr);
+    vkDestroyPipelineLayout(m_logicalDevice, m_graphics.pipelineLayout, nullptr);
+    vkDestroyPipeline(m_logicalDevice, m_graphics.pipeline, nullptr);
+    vkDestroySemaphore(m_logicalDevice, m_graphics.semaphore, nullptr);
+}
+
+
 void SlimeSimulation::Render()
 {
     if (!m_prepared)
@@ -501,7 +540,7 @@ void SlimeSimulation::PrepareCompute()
     VK_CHECK_RESULT(vkCreateCommandPool(m_logicalDevice, &computeCommandPoolCreateInfo, nullptr, &m_compute.commandPool));
 
     // Create a command buffer for compute operations
-    m_compute.commandBuffer = m_vulkanDevice->CreateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+    m_compute.commandBuffer = m_vulkanDevice->CreateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, m_compute.commandPool);
 
     // Semaphore for compute & graphics sync
     VkSemaphoreCreateInfo semaphoreCreateInfo{};

@@ -228,7 +228,7 @@ VkCommandPool VulkanDevice::CreateCommandPool(uint32_t queueFamilyIndex, VkComma
     return cmdPool;
 }
 
-VkCommandBuffer VulkanDevice::CreateCommandBuffer(VkCommandBufferLevel level, bool begin, VkCommandBufferUsageFlags usageFlags)
+VkCommandBuffer VulkanDevice::CreateCommandBuffer(VkCommandBufferLevel level, VkCommandPool commandPool, bool begin, VkCommandBufferUsageFlags usageFlags)
 {
     VkCommandBufferAllocateInfo cmdBufferAllocateInfo{};
     cmdBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -247,6 +247,11 @@ VkCommandBuffer VulkanDevice::CreateCommandBuffer(VkCommandBufferLevel level, bo
         VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, &cmdBufferBeginInfo));
     }
     return cmdBuffer;
+}
+
+VkCommandBuffer VulkanDevice::CreateCommandBuffer(VkCommandBufferLevel level, bool begin, VkCommandBufferUsageFlags usageFlags)
+{
+    return CreateCommandBuffer(level, commandPool, begin, usageFlags);
 }
 
 void VulkanDevice::FlushCommandBuffer(VkCommandBuffer commandBuffer, VkQueue queue, bool free)

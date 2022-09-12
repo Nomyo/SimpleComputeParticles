@@ -32,7 +32,7 @@ VulkanCore::VulkanCore(bool enableValidation)
 
 VulkanCore::~VulkanCore()
 {
-
+    CleanUp();
 }
 
 VkResult VulkanCore::CreateInstance(bool enableValidation)
@@ -263,14 +263,41 @@ void VulkanCore::Prepare()
 
     SetupFrameBuffer();
 
-    UI.device = m_vulkanDevice;
-    UI.queue = m_graphicsQueue;
-    UI.shaders = {
+    m_ui.device = m_vulkanDevice;
+    m_ui.queue = m_graphicsQueue;
+    m_ui.shaders = {
         Utils::LoadShader(m_logicalDevice, "shaders/ui_vert.spv", VK_SHADER_STAGE_VERTEX_BIT),
         Utils::LoadShader(m_logicalDevice, "shaders/ui_frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT),
     };
-    UI.PrepareResources();
-    UI.PreparePipeline(m_renderPass);
+    m_ui.PrepareResources();
+    m_ui.PreparePipeline(m_renderPass);
+}
+
+void VulkanCore::CleanUp()
+{
+    // Clean up Vulkan resources
+    m_swapChain.CleanUp();
+    vkDestroyDescriptorPool(m_logicalDevice, m_descriptorPool, nullptr);
+
+    vkFreeCommandBuffers(m_logicalDevice, m_cmdPool, static_cast<uint32_t>(m_drawCmdBuffers.size()), m_drawCmdBuffers.data());
+    vkDestroyRenderPass(m_logicalDevice, m_renderPass, nullptr);
+    for (uint32_t i = 0; i < m_frameBuffers.size(); i++)
+    {
+        vkDestroyFramebuffer(m_logicalDevice, m_frameBuffers[i], nullptr);
+    }
+
+    vkDestroyCommandPool(m_logicalDevice, m_cmdPool, nullptr);
+
+    vkDestroySemaphore(m_logicalDevice, m_semaphores.presentComplete, nullptr);
+    vkDestroySemaphore(m_logicalDevice, m_semaphores.renderComplete, nullptr);
+    for (auto& fence : m_waitFences) {
+        vkDestroyFence(m_logicalDevice, fence, nullptr);
+    }
+
+    m_ui.CleanUp();
+
+    delete m_vulkanDevice;
+    vkDestroyInstance(m_instance, nullptr);
 }
 
 void VulkanCore::RenderLoop()
@@ -458,9 +485,9 @@ void VulkanCore::UpdateUI()
     io.DeltaTime = m_frameTimer;
 
     io.MousePos = ImVec2((float)m_mousePosX, (float)m_mousePosY);
-    io.MouseDown[0] = m_mouseButtons.left && UI.visible;
-    io.MouseDown[1] = m_mouseButtons.right && UI.visible;
-    io.MouseDown[2] = m_mouseButtons.middle && UI.visible;
+    io.MouseDown[0] = m_mouseButtons.left && m_ui.visible;
+    io.MouseDown[1] = m_mouseButtons.right && m_ui.visible;
+    io.MouseDown[2] = m_mouseButtons.middle && m_ui.visible;
 
     ImGui::NewFrame();
 
@@ -471,14 +498,14 @@ void VulkanCore::UpdateUI()
     ImGui::TextUnformatted(m_deviceProperties.deviceName);
     ImGui::Text("%.2f ms/frame (%.1d fps)", (1000.0f / m_lastFPS), m_lastFPS);
 
-    OnUpdateUIOverlay(&UI);
+    OnUpdateUIOverlay(&m_ui);
 
     ImGui::End();
     ImGui::Render();
 
-    if (UI.UpdateBuffers() || UI.updated) {
+    if (m_ui.UpdateBuffers() || m_ui.updated) {
         BuildCommandBuffers();
-        UI.updated = false;
+        m_ui.updated = false;
     }
 }
 
@@ -487,7 +514,7 @@ void VulkanCore::OnUpdateUIOverlay(VulkanIamGuiWrapper *uiWrapper)
 
 void VulkanCore::DrawUI(const VkCommandBuffer commandBuffer)
 {
-    if (UI.visible) {
+    if (m_ui.visible) {
         VkViewport viewport{};
         viewport.width = static_cast<float>(m_width);
         viewport.height = static_cast<float>(m_height);
@@ -502,7 +529,7 @@ void VulkanCore::DrawUI(const VkCommandBuffer commandBuffer)
         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        UI.Draw(commandBuffer);
+        m_ui.Draw(commandBuffer);
     }
 }
 
