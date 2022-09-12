@@ -373,8 +373,8 @@ void SlimeSimulation::UpdateUniformBuffers()
     }
     else
     {
-        float normalizedMx = (m_mousePosX - static_cast<float>(m_width / 2)) / static_cast<float>(m_width / 2);
-        float normalizedMy = (m_mousePosY - static_cast<float>(m_height / 2)) / static_cast<float>(m_height / 2);
+        float normalizedMx = ((float)m_mousePosX - static_cast<float>(m_width / 2)) / static_cast<float>(m_width / 2);
+        float normalizedMy = ((float)m_mousePosY - static_cast<float>(m_height / 2)) / static_cast<float>(m_height / 2);
         m_compute.ubo.destX = normalizedMx;
         m_compute.ubo.destY = normalizedMy;
     }
