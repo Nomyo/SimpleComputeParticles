@@ -338,6 +338,11 @@ VkResult VulkanDevice::CreateBuffer(VkBufferUsageFlags usageFlags, VkMemoryPrope
 
 VulkanDevice::~VulkanDevice()
 {
+    if (commandPool)
+    {
+        vkDestroyCommandPool(logicalDevice, commandPool, nullptr);
+    }
+
     if (logicalDevice)
     {
         vkDestroyDevice(logicalDevice, nullptr);

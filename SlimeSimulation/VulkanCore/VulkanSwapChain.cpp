@@ -10,18 +10,12 @@ VulkanSwapChain::VulkanSwapChain()
 
 VulkanSwapChain::~VulkanSwapChain()
 {
-    CleanUp();
 }
 
 void VulkanSwapChain::CleanUp()
 {
-    for (auto& image : m_images) {
-       vkDestroyImage(m_logicalDevice, image, nullptr);
-    }
-
     for (auto& buffer : m_buffers) {
         vkDestroyImageView(m_logicalDevice, buffer.view, nullptr);
-        vkDestroyImage(m_logicalDevice, buffer.image, nullptr);
     }
 
     vkDestroySwapchainKHR(m_logicalDevice, m_swapChain, nullptr);
