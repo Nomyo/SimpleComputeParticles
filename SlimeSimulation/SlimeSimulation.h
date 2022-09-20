@@ -8,12 +8,17 @@
 
 #define ENABLE_VALIDATION true
 
-#define PARTICLE_COUNT 256000 * 4  
+#define PARTICLE_COUNT 25600 * 4
 
 // SSBO particle declaration
 struct Particle {
-    glm::vec2 pos; // Particle position
-    glm::vec2 vel; // Particle velocity
+    glm::vec4 pos; // Particle position
+    glm::vec4 vel; // Particle velocity
+};
+
+struct CubeVertex {
+    glm::vec3 pos;
+    glm::vec3 color;
 };
 
 struct BufferWrapper {
@@ -26,20 +31,40 @@ struct BufferWrapper {
 class SlimeSimulation : public VulkanCore
 {
 public:
-    struct {
+    struct VerticesDescription {
         VkPipelineVertexInputStateCreateInfo inputState;
         std::vector<VkVertexInputBindingDescription> bindingDescriptions;
         std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-    } m_vertices;
+    };
+
+    VerticesDescription m_particleVertices;
+    VerticesDescription m_cubeVertices;
 
     // Resources for the graphics part
     struct {
         uint32_t queueFamilyIndex;
-        VkDescriptorSetLayout descriptorSetLayout;  // Image display shader binding layout
-        VkDescriptorSet descriptorSet;              // Particle system rendering shader bindings
-        VkPipeline pipeline;                        // Image display pipeline
-        VkPipelineLayout pipelineLayout;            // Layout of the graphics pipeline
+
+        struct pipelineWrapper {
+            VkDescriptorSetLayout descriptorSetLayout;  // Image display shader binding layout
+            VkDescriptorSet descriptorSet;              // Particle system rendering shader bindings
+            VkPipeline pipeline;                        // Image display pipeline
+            VkPipelineLayout pipelineLayout;            // Layout of the graphics pipeline
+        };
+
+        // Particle pipeline
+        pipelineWrapper particle;
+
+        // Simple Cube pipeline
+        BufferWrapper cubeVertexBuffer;
+        pipelineWrapper cube;
+
         VkSemaphore semaphore;                      // Execution dependency between compute & graphic submission
+        BufferWrapper uniformBuffer;
+        struct graphicsUbo {
+            glm::mat4 model;
+            glm::mat4 view;
+            glm::mat4 projection;
+        } ubo;
     } m_graphics;
 
     struct {
@@ -58,6 +83,7 @@ public:
             float elapsedTime;
             float destX;
             float destY;
+            float destZ;
             uint32_t particleCount = PARTICLE_COUNT;
         } ubo;
     } m_compute;
@@ -75,22 +101,29 @@ private:
 
     void PrepareGraphics();
     void PrepareCompute();
-    void PreparePipelines();
+
+    void PrepareGraphicsPipelines();
+    void PrepareParticlePipeline();
+    void PrepareCubePipeline();
+
     void PrepareStorageBuffers();
+    void PrepareCubeVextexBuffers();
     void PrepareUniformBuffers();
 
     void Draw();
     void LoadAssets();
 
-    void SetupDescriptorSetLayout();
-    void SetupDescriptorPool();
-    void SetupDescriptorSet();
+    void SetupParticleDescriptorSetLayout();
+    void SetupParticleDescriptorPool();
+    void SetupParticleDescriptorSet();
 
     virtual void BuildCommandBuffers();
     void BuildComputeCommandBuffer();
     void UpdateUniformBuffers();
+    void UpdateViewUniformBuffers();
 
     virtual void OnUpdateUIOverlay(VulkanIamGuiWrapper* ui);
+    virtual void OnViewChanged();
 
     std::vector<VkFence> m_queueCompleteFences;
 

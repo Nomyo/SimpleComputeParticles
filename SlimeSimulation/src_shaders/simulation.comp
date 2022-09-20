@@ -2,13 +2,13 @@
 
 struct Particle
 {
-   vec2 pos;
-   vec2 vel;
+    vec4 pos;
+    vec4 vel;
 };
 
 layout(std140, binding = 0) buffer Pos 
 {
-   Particle particles[ ];
+    Particle particles[ ];
 };
 
 layout(binding = 1) uniform UBO
@@ -16,15 +16,16 @@ layout(binding = 1) uniform UBO
     float elapsedTime;
     float destX;
     float destY;
+    float destZ;
     uint particleCount;
 } ubo;
 
-vec2 attraction(vec2 particlePos) {
+vec3 attraction(vec3 particlePos) {
     float attractionConstant = 15.45;
-    float attractorMass = 55;
-    vec2 attractorPos = vec2(ubo.destX, ubo.destY);
+    float attractorMass = 85;
+    vec3 attractorPos = vec3(ubo.destX, ubo.destY, ubo.destZ);
 
-    vec2 delta = attractorPos - particlePos;
+    vec3 delta = attractorPos - particlePos;
     float r = clamp(sqrt(dot(delta, delta)), 0.5, 10.0);
     return normalize(delta) * attractionConstant * attractorMass / (r * r);
 }
@@ -32,35 +33,35 @@ vec2 attraction(vec2 particlePos) {
 layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
-    // 1D workload 
+    // 1D workload
     uint index = gl_GlobalInvocationID.x;
     if (index > ubo.particleCount) {
         return;
     }
 
-    float massParticle = 25;
+    float massParticle = 55;
 
-    vec2 attractionForce = attraction(particles[index].pos);
-    vec2 acceleration = attractionForce;
+    vec3 attractionForce = attraction(particles[index].pos.xyz);
+    vec3 acceleration = attractionForce;
 
-    vec2 vPos = particles[index].pos;
-    vec2 vVel = particles[index].vel;
+    vec3 vPos = particles[index].pos.xyz;
+    vec3 vVel = particles[index].vel.xyz;
 
-    particles[index].vel = vVel + acceleration * ubo.elapsedTime;
-
-	particles[index].vel.x = clamp(particles[index].vel.x, -35.0, 35.0);
-	particles[index].vel.y = clamp(particles[index].vel.y, -35.0, 35.0);
-
-	particles[index].pos += vVel * ubo.elapsedTime + 1 / 2 * acceleration * ubo.elapsedTime * ubo.elapsedTime;
-	vec2 newPos = particles[index].pos;
+    particles[index].vel.xyz = vVel + acceleration * ubo.elapsedTime;
+    particles[index].pos.xyz += vVel * ubo.elapsedTime + 1 / 2 * acceleration * ubo.elapsedTime * ubo.elapsedTime;
+    vec3 newPos = particles[index].pos.xyz;
     // collide with boundary
-	float slowFactor = 0.8;
+    float slowFactor = 0.8;
     if ((newPos.x < -1.0) || (newPos.x > 1.0)) {
-        particles[index].vel = vec2(-particles[index].vel.x, particles[index].vel.y) * slowFactor;
-		particles[index].pos = vPos + vec2(-vVel.x, vVel.y) * ubo.elapsedTime + 1 / 2 * acceleration * ubo.elapsedTime * ubo.elapsedTime;
+        particles[index].vel.xyz = vec3(-particles[index].vel.x, particles[index].vel.y, particles[index].vel.z) * slowFactor;
+        particles[index].pos.xyz = vPos + vec3(-vVel.x, vVel.y, vVel.z) * ubo.elapsedTime + 1 / 2 * acceleration * ubo.elapsedTime * ubo.elapsedTime;
     }
     else if ((newPos.y < -1.0) || (newPos.y > 1.0)) {
-        particles[index].vel = vec2(particles[index].vel.x, -particles[index].vel.y) * slowFactor;
-		particles[index].pos = vPos + vec2(vVel.x, -vVel.y) * ubo.elapsedTime + 1 / 2 * acceleration * ubo.elapsedTime * ubo.elapsedTime;
+        particles[index].vel.xyz = vec3(particles[index].vel.x, -particles[index].vel.y, particles[index].vel.z) * slowFactor;
+        particles[index].pos.xyz = vPos + vec3(vVel.x, -vVel.y, vVel.z) * ubo.elapsedTime + 1 / 2 * acceleration * ubo.elapsedTime * ubo.elapsedTime;
+    }
+    else if ((newPos.z < -1.0) || (newPos.z > 1.0)) {
+        particles[index].vel.xyz = vec3(particles[index].vel.x, particles[index].vel.y, -particles[index].vel.z) * slowFactor;
+        particles[index].pos.xyz = vPos + vec3(vVel.x, vVel.y, -vVel.z) * ubo.elapsedTime + 1 / 2 * acceleration * ubo.elapsedTime * ubo.elapsedTime;
     }
 }

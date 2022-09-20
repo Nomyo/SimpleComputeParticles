@@ -22,6 +22,18 @@ namespace {
         app->MouseButtonCallback(window, button, action, mods);
     }
 
+    void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+    {
+        auto app = reinterpret_cast<VulkanCore*>(glfwGetWindowUserPointer(window));
+        app->KeyCallback(window, key, scancode, action, mods);
+    }
+
+    void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos)
+    {
+        auto app = reinterpret_cast<VulkanCore*>(glfwGetWindowUserPointer(window));
+        app->CursorPositionCallback(window, xpos, ypos);
+    }
+
 } // anomymous
 
 VulkanCore::VulkanCore(bool enableValidation)
@@ -227,6 +239,71 @@ void VulkanCore::MouseButtonCallback(GLFWwindow* window, int button, int action,
     }
 }
 
+void VulkanCore::KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    // PRESS
+    if ((key == GLFW_KEY_UP || key == GLFW_KEY_W) && action == GLFW_PRESS)
+    {
+        m_camera.keys.up = true;
+    }
+    else if ((key == GLFW_KEY_DOWN || key == GLFW_KEY_S) && action == GLFW_PRESS)
+    {
+        m_camera.keys.down = true;
+    }
+    else if ((key == GLFW_KEY_LEFT || key == GLFW_KEY_A) && action == GLFW_PRESS)
+    {
+        m_camera.keys.left = true;
+    }
+    else if ((key == GLFW_KEY_RIGHT || key == GLFW_KEY_D) && action == GLFW_PRESS)
+    {
+        m_camera.keys.right = true;
+    }
+    else if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+    {
+        m_camera.keys.space = true;
+    }
+    else if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_PRESS)
+    {
+        m_camera.keys.ctrl = true;
+    }
+    // RELEASE
+    else if ((key == GLFW_KEY_UP || key == GLFW_KEY_W) && action == GLFW_RELEASE)
+    {
+        m_camera.keys.up = false;
+    }
+    else if ((key == GLFW_KEY_DOWN || key == GLFW_KEY_S) && action == GLFW_RELEASE)
+    {
+        m_camera.keys.down = false;
+    }
+    else if ((key == GLFW_KEY_LEFT || key == GLFW_KEY_A) && action == GLFW_RELEASE)
+    {
+        m_camera.keys.left = false;
+    }
+    else if ((key == GLFW_KEY_RIGHT || key == GLFW_KEY_D) && action == GLFW_RELEASE)
+    {
+        m_camera.keys.right = false;
+    }
+    else if (key == GLFW_KEY_SPACE && action == GLFW_RELEASE)
+    {
+        m_camera.keys.space = false;
+    }
+    else if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_RELEASE)
+    {
+        m_camera.keys.ctrl = false;
+    }
+}
+
+void VulkanCore::CursorPositionCallback(GLFWwindow* window, double xpos, double ypos)
+{
+    double dx = m_mousePosX - xpos;
+    double dy = m_mousePosY - ypos;
+
+    if (m_mouseButtons.left) {
+        m_camera.Rotate(glm::vec3(dy * m_camera.GetRotationSpeed(), -dx * m_camera.GetRotationSpeed(), 0.0f));
+        m_viewUpdated = true;
+    }
+}
+
 void VulkanCore::SetupWindow()
 {
     glfwInit();
@@ -235,7 +312,10 @@ void VulkanCore::SetupWindow()
 
     m_pWindow = glfwCreateWindow(m_width, m_height, "Basic Newton Physics particles", nullptr, nullptr);
     glfwSetWindowUserPointer(m_pWindow, this);
+
     glfwSetMouseButtonCallback(m_pWindow, mouseButtonCallback);
+    glfwSetKeyCallback(m_pWindow, keyCallback);
+    glfwSetCursorPosCallback(m_pWindow, cursorPositionCallback);
     glfwSetFramebufferSizeCallback(m_pWindow, framebufferResizeCallback);
 }
 
@@ -302,7 +382,6 @@ void VulkanCore::CleanUp()
 
 void VulkanCore::RenderLoop()
 {
-
     m_lastTimestamp = std::chrono::high_resolution_clock::now();
     m_tPrevEnd = m_lastTimestamp;
 
@@ -318,11 +397,20 @@ void VulkanCore::RenderLoop()
     }
 }
 
+void VulkanCore::OnViewChanged()
+{
+}
+
 void VulkanCore::NextFrame()
 {
     glfwGetCursorPos(m_pWindow, &m_mousePosX, &m_mousePosY);
 
     // TODO:Handler view updates camera, etc.
+    if (m_viewUpdated) {
+        // Update uniform buffers in the main application
+        OnViewChanged();
+        m_viewUpdated = false;
+    }
 
     auto tStart = std::chrono::high_resolution_clock::now();
 
@@ -332,6 +420,11 @@ void VulkanCore::NextFrame()
     auto tEnd = std::chrono::high_resolution_clock::now();
     auto tDiff = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
     m_frameTimer = (float)tDiff / 1000.0f;
+
+    m_camera.Update(m_frameTimer);
+    if (m_camera.HasViewChanged()) {
+        m_viewUpdated = true;
+    }
 
     float fpsTimer = (float)(std::chrono::duration<double, std::milli>(tEnd - m_lastTimestamp).count());
     if (fpsTimer > 1000.0f)
@@ -471,6 +564,8 @@ void VulkanCore::SubmitFrame()
     else {
         VK_CHECK_RESULT(result);
     }
+
+    // TODO: remove if the applications can use fences for a smaller waiting time
     VK_CHECK_RESULT(vkQueueWaitIdle(m_graphicsQueue));
 }
 
@@ -497,6 +592,8 @@ void VulkanCore::UpdateUI()
 
     ImGui::TextUnformatted(m_deviceProperties.deviceName);
     ImGui::Text("%.2f ms/frame (%.1d fps)", (1000.0f / m_lastFPS), m_lastFPS);
+    ImGui::Text("mouseposX %f - mousepoxY %f fps", m_mousePosX, m_mousePosY);
+
 
     OnUpdateUIOverlay(&m_ui);
 

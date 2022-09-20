@@ -2,8 +2,15 @@
 
 #extension GL_KHR_vulkan_glsl : enable
 
-layout(location = 0) in vec2 inPosition;
-layout(location = 1) in vec2 inVel;
+layout(location = 0) in vec3 inPosition;
+layout(location = 1) in vec3 inVel;
+
+layout (binding = 1) uniform UBO
+{
+    mat4 modelMatrix;
+    mat4 viewMatrix;
+    mat4 projectionMatrix;
+} ubo;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -14,9 +21,9 @@ out gl_PerVertex
 };
 
 void main() {
-    gl_PointSize = 0.1;
-    gl_Position = vec4(inPosition.xy, 0.0, 1.0);
+    gl_PointSize = .5;
+    gl_Position = ubo.projectionMatrix * ubo.viewMatrix * ubo.modelMatrix * vec4(inPosition.xyz, 1.0);
 
-    float velocityFactor = length(inVel * 0.2);
-    fragColor = vec4(velocityFactor *1.1* 0.234, velocityFactor * 0.988, velocityFactor * 0.788, 1.0);
+    float velocityFactor = length(abs(inVel) * 0.02);
+    fragColor = vec4(1.0 * velocityFactor, 1.0 - (0.5* velocityFactor), 1.0 - (velocityFactor), 1.0);
 }

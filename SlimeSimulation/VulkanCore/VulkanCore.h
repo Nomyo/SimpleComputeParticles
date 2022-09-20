@@ -10,6 +10,7 @@
 #include <chrono>
 #include <vector>
 
+#include <VulkanCamera.h>
 #include <VulkanDevice.h>
 #include <VulkanImguiWrapper.h>
 #include <VulkanSwapChain.h>
@@ -34,6 +35,7 @@ public:
     virtual void NextFrame();
     virtual void PrepareFrame();
     virtual void SubmitFrame();
+    virtual void OnViewChanged();
     virtual void Render() = 0;
 
     virtual void UpdateUI();
@@ -42,6 +44,8 @@ public:
     // Called when the window has been resized, can be used by the sample application to recreate resources
     virtual void WindowResize();
     virtual void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
+    virtual void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+    virtual void CursorPositionCallback(GLFWwindow* window, double xpos, double ypos);
 
 protected:
     virtual VkResult CreateInstance(bool enableValidation);
@@ -116,6 +120,9 @@ protected:
     // Ui wrapper
     VulkanIamGuiWrapper m_ui;
 
+    // Camera
+    VulkanCamera m_camera;
+
     // Synchronization semaphores
     struct {
         // Swap chain image presentation
@@ -133,6 +140,7 @@ protected:
     double m_mousePosY;
 
     bool m_prepared = false;
+    bool m_viewUpdated = false;
 
     // Settings
     bool m_validation;
