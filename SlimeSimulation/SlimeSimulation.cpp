@@ -489,7 +489,7 @@ void SlimeSimulation::UpdateUniformBuffers()
 {
     UpdateViewUniformBuffers();
     static float timer = 0.0f;
-    static float timerSpeed = .2f;
+    static float timerSpeed = .08f;
     timer += timerSpeed * m_frameTimer;
     if (timer > 1.0)
     {
@@ -499,9 +499,9 @@ void SlimeSimulation::UpdateUniformBuffers()
     m_compute.ubo.elapsedTime = m_frameTimer / 80;
     if (!m_attractorMouse)
     {
-        m_compute.ubo.destX = sin(glm::radians(m_compute.ubo.elapsedTime * 360.0f));
-        m_compute.ubo.destY = sin(glm::radians(m_compute.ubo.elapsedTime * 360.0f));
-        m_compute.ubo.destZ = sin(glm::radians(m_compute.ubo.elapsedTime * 360.0f));
+        m_compute.ubo.destX = sin(glm::radians(timer * 360));
+        m_compute.ubo.destY = sin(glm::radians(timer * 360));
+        m_compute.ubo.destZ = sin(glm::radians(timer * 360));
     }
     else
     {

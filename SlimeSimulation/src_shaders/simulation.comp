@@ -51,7 +51,7 @@ void main()
     particles[index].pos.xyz += vVel * ubo.elapsedTime + 1 / 2 * acceleration * ubo.elapsedTime * ubo.elapsedTime;
     vec3 newPos = particles[index].pos.xyz;
     // collide with boundary
-    float slowFactor = 0.8;
+    float slowFactor = 0.2;
     if ((newPos.x < -1.0) || (newPos.x > 1.0)) {
         particles[index].vel.xyz = vec3(-particles[index].vel.x, particles[index].vel.y, particles[index].vel.z) * slowFactor;
         particles[index].pos.xyz = vPos + vec3(-vVel.x, vVel.y, vVel.z) * ubo.elapsedTime + 1 / 2 * acceleration * ubo.elapsedTime * ubo.elapsedTime;
