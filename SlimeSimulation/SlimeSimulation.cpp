@@ -479,7 +479,7 @@ void SlimeSimulation::PrepareUniformBuffers()
 
 void SlimeSimulation::UpdateViewUniformBuffers()
 {
-    m_graphics.ubo.model = glm::rotate(m_graphics.ubo.model, glm::radians(m_frameTimer * 50.0f), glm::vec3(0, 1, 0));
+    //m_graphics.ubo.model = ..glm::rotate(m_graphics.ubo.model, glm::radians(m_frameTimer * 50.0f), glm::vec3(0, 1, 0));
     m_graphics.ubo.view = m_camera.GetViewMatrix();
     m_graphics.ubo.projection = m_camera.GetProjectionMatrix();
     memcpy(m_graphics.uniformBuffer.mapped, &m_graphics.ubo, sizeof(m_graphics.ubo));
@@ -512,23 +512,6 @@ void SlimeSimulation::UpdateUniformBuffers()
     }
 
     memcpy(m_compute.uniformBuffer.mapped, &m_compute.ubo, sizeof(m_compute.ubo));
-
-    // DEBUG
-    /*
-    void *data;
-    vkMapMemory(m_logicalDevice, m_compute.storageBuffer.memory, 0, PARTICLE_COUNT * sizeof(Particle), 0, &data);
-
-    std::vector<Particle> p;
-    p.resize(PARTICLE_COUNT * sizeof(Particle));
-    memcpy(p.data(), data, PARTICLE_COUNT * sizeof(Particle));
-
-    for (auto e : p)
-    {
-        auto pos = e.pos;
-        auto vel = e.vel;
-        std::cout << pos.x << " " << pos.y << " " << pos.z << std::endl;
-        std::cout << vel.x << " " << vel.y << " " << vel.z << std::endl;
-    }*/
 }
 
 void SlimeSimulation::PrepareCubePipeline()
