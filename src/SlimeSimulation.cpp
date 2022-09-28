@@ -392,12 +392,37 @@ void SlimeSimulation::PrepareStorageBuffers()
     copyRegion.size = storageBufferSize;
     vkCmdCopyBuffer(copyCmd, stagingBuffer.buffer, m_compute.storageBuffer.buffer, 1, &copyRegion);
 
-    m_vulkanDevice->FlushCommandBuffer(copyCmd, m_graphicsQueue, true);
-
     // Set descriptor
     m_compute.storageBuffer.descriptor.buffer = m_compute.storageBuffer.buffer;
     m_compute.storageBuffer.descriptor.offset = 0;
     m_compute.storageBuffer.descriptor.range = VK_WHOLE_SIZE;
+
+    // Execute a transfer barrier to the compute queue // FIXME: refactor
+    if (m_graphics.queueFamilyIndex != m_compute.queueFamilyIndex)
+    {
+        VkBufferMemoryBarrier buffer_barrier =
+        {
+            VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+            nullptr,
+            VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+            0,
+            m_graphics.queueFamilyIndex,
+            m_compute.queueFamilyIndex,
+            m_compute.storageBuffer.buffer,
+            0,
+            m_compute.storageBuffer.descriptor.range
+        };
+
+        vkCmdPipelineBarrier(
+            copyCmd,
+            VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+            0,
+            0, nullptr,
+            1, &buffer_barrier,
+            0, nullptr);
+    }
+    m_vulkanDevice->FlushCommandBuffer(copyCmd, m_graphicsQueue, true);
 
     // Cleanup
     vkDestroyBuffer(m_logicalDevice, stagingBuffer.buffer, nullptr);
@@ -876,6 +901,32 @@ void SlimeSimulation::BuildCommandBuffers()
 
         VK_CHECK_RESULT(vkBeginCommandBuffer(m_drawCmdBuffers[i], &cmdBufInfo));
 
+        // Acquire barrier
+        if (m_graphics.queueFamilyIndex != m_compute.queueFamilyIndex)
+        {
+            VkBufferMemoryBarrier buffer_barrier =
+            {
+                VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                nullptr,
+                0,
+                VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+                m_compute.queueFamilyIndex,
+                m_graphics.queueFamilyIndex,
+                m_compute.storageBuffer.buffer,
+                0,
+                m_compute.storageBuffer.descriptor.range
+            };
+
+            vkCmdPipelineBarrier(
+                m_drawCmdBuffers[i],
+                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+                0,
+                0, nullptr,
+                1, &buffer_barrier,
+                0, nullptr);
+        }
+
         vkCmdBeginRenderPass(m_drawCmdBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
         VkViewport viewport{};
@@ -909,6 +960,32 @@ void SlimeSimulation::BuildCommandBuffers()
         DrawUI(m_drawCmdBuffers[i]);
 
         vkCmdEndRenderPass(m_drawCmdBuffers[i]);
+
+        // Release barrier
+        if (m_graphics.queueFamilyIndex != m_compute.queueFamilyIndex)
+        {
+            VkBufferMemoryBarrier buffer_barrier =
+            {
+                VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                nullptr,
+                VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+                0,
+                m_graphics.queueFamilyIndex,
+                m_compute.queueFamilyIndex,
+                m_compute.storageBuffer.buffer,
+                0,
+                m_compute.storageBuffer.descriptor.range
+            };
+
+            vkCmdPipelineBarrier(
+                m_drawCmdBuffers[i],
+                VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+                VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                0,
+                0, nullptr,
+                1, &buffer_barrier,
+                0, nullptr);
+        }
 
         VK_CHECK_RESULT(vkEndCommandBuffer(m_drawCmdBuffers[i]));
     }
