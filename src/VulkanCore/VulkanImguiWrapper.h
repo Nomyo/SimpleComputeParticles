@@ -31,12 +31,12 @@ struct VulkanIamGuiWrapper
     VkPipeline pipeline;
 
     // Buffers
-    VkBuffer vertexBuffer;
-    VkDeviceMemory vertexMemory;
-    void *vertexMapped;
-    VkBuffer indexBuffer;
-    VkDeviceMemory indexMemory;
-    void *indexMapped;
+    VkBuffer vertexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory vertexMemory = VK_NULL_HANDLE;
+    void *vertexMapped = nullptr;
+    VkBuffer indexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory indexMemory = VK_NULL_HANDLE;
+    void *indexMapped = nullptr;
 
     VkQueue queue;
 

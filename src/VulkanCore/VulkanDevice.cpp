@@ -338,10 +338,10 @@ VkResult VulkanDevice::CreateBuffer(VkBufferUsageFlags usageFlags, VkMemoryPrope
 
 VulkanDevice::~VulkanDevice()
 {
-    /*if (commandPool)
+    if (commandPool)
     {
         vkDestroyCommandPool(logicalDevice, commandPool, nullptr);
-    }*/
+    }
 
     // TODO clean simulation stuff
     if (logicalDevice)

@@ -39,7 +39,6 @@ void VulkanIamGuiWrapper::CleanUp()
     vkDestroySampler(device->logicalDevice, sampler, nullptr);
 
     // Delete pools / pipeline
-    vkFreeDescriptorSets(device->logicalDevice, descriptorPool, 1, &descriptorSet);
     vkDestroyDescriptorSetLayout(device->logicalDevice, descriptorSetLayout, nullptr);
     vkDestroyDescriptorPool(device->logicalDevice, descriptorPool, nullptr);
     vkDestroyPipelineLayout(device->logicalDevice, pipelineLayout, nullptr);
@@ -152,8 +151,8 @@ void VulkanIamGuiWrapper::PrepareResources()
 
     // graphics queue or transfer
     device->FlushCommandBuffer(copyCmd, queue, true);
-    vkDestroyBuffer(device->logicalDevice, stagingBuffer, nullptr);
     vkFreeMemory(device->logicalDevice, stagingBufferMemory, nullptr);
+    vkDestroyBuffer(device->logicalDevice, stagingBuffer, nullptr);
 
     // Font texture Sampler
     VkSamplerCreateInfo samplerInfo{};
@@ -415,10 +414,14 @@ bool VulkanIamGuiWrapper::UpdateBuffers()
 
     // Vertex buffer
     if ((vertexBuffer == VK_NULL_HANDLE) || (vertexCount != imDrawData->TotalVtxCount)) {
-        if (vertexBuffer != VK_NULL_HANDLE && vertexMemory == VK_NULL_HANDLE) {
+        if (vertexMapped) {
             vkUnmapMemory(device->logicalDevice, vertexMemory);
-            vkDestroyBuffer(device->logicalDevice, vertexBuffer, nullptr);
+        }
+        if (vertexMemory) {
             vkFreeMemory(device->logicalDevice, vertexMemory, nullptr);
+        }
+        if (vertexBuffer) {
+            vkDestroyBuffer(device->logicalDevice, vertexBuffer, nullptr);
         }
         VK_CHECK_RESULT(device->CreateBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &vertexBuffer, &vertexMemory, vertexBufferSize));
         vertexCount = imDrawData->TotalVtxCount;
@@ -428,10 +431,16 @@ bool VulkanIamGuiWrapper::UpdateBuffers()
 
     // Index buffer
     if ((indexBuffer == VK_NULL_HANDLE) || (indexCount < imDrawData->TotalIdxCount)) {
-        if (indexBuffer != VK_NULL_HANDLE && indexMemory == VK_NULL_HANDLE) {
-            vkUnmapMemory(device->logicalDevice, indexMemory);
-            vkDestroyBuffer(device->logicalDevice, indexBuffer, nullptr);
-            vkFreeMemory(device->logicalDevice, indexMemory, nullptr);
+        if (indexBuffer != VK_NULL_HANDLE && indexMemory != VK_NULL_HANDLE) {
+            if (indexMapped) {
+                vkUnmapMemory(device->logicalDevice, indexMemory);
+            }
+            if (indexMemory) {
+                vkFreeMemory(device->logicalDevice, indexMemory, nullptr);
+            }
+            if (indexBuffer) {
+                vkDestroyBuffer(device->logicalDevice, indexBuffer, nullptr);
+            }
         }
         VK_CHECK_RESULT(device->CreateBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &indexBuffer, &indexMemory, indexBufferSize));
         indexCount = imDrawData->TotalIdxCount;

@@ -27,7 +27,6 @@ target_sources(imgui PRIVATE
     imgui/imgui_draw.cpp
     imgui/imgui_widgets.cpp
 
-    imgui/imgui_impl_vulkan.cpp
     imgui/imgui_impl_glfw.cpp
     )
 

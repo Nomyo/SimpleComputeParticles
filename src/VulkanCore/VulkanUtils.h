@@ -210,25 +210,4 @@ namespace Utils
         return ucode;
     }
 
-    static VkPipelineShaderStageCreateInfo LoadShader(VkDevice device, const std::string& filepath, VkShaderStageFlagBits stage)
-    {
-        auto ucode = ReadFile(filepath);
-        VkShaderModuleCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        createInfo.codeSize = ucode.size();
-        createInfo.pCode = reinterpret_cast<const uint32_t*>(ucode.data());
-
-        VkShaderModule shaderModule;
-        if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
-            throw std::runtime_error("Failed to create shader module");
-        }
-
-        VkPipelineShaderStageCreateInfo shaderStageInfo{};
-        shaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        shaderStageInfo.stage = stage;
-        shaderStageInfo.module = shaderModule;
-        shaderStageInfo.pName = "main";
-
-        return shaderStageInfo;
-    }
 } // Utils

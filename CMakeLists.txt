@@ -3,14 +3,14 @@
 #
 cmake_minimum_required (VERSION 3.8)
 
-project ("Slime_simulation")
+project ("ParticleSimulation")
 
 find_package(Vulkan REQUIRED)
 
 add_subdirectory(external)
 
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
-set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Slime_simulation)
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ParticleSimulation)
 
 add_subdirectory(src)
 

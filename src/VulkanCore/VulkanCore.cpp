@@ -346,11 +346,35 @@ void VulkanCore::Prepare()
     m_ui.device = m_vulkanDevice;
     m_ui.queue = m_graphicsQueue;
     m_ui.shaders = {
-        Utils::LoadShader(m_logicalDevice, "../../shaders/ui.vert.spv", VK_SHADER_STAGE_VERTEX_BIT),
-        Utils::LoadShader(m_logicalDevice, "../../shaders/ui.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT),
+        LoadShader(m_logicalDevice, "../../shaders/ui.vert.spv", VK_SHADER_STAGE_VERTEX_BIT),
+        LoadShader(m_logicalDevice, "../../shaders/ui.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT),
     };
     m_ui.PrepareResources();
     m_ui.PreparePipeline(m_renderPass);
+}
+
+VkPipelineShaderStageCreateInfo VulkanCore::LoadShader(VkDevice device, const std::string& filepath, VkShaderStageFlagBits stage)
+{
+    auto ucode = Utils::ReadFile(filepath);
+    VkShaderModuleCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    createInfo.codeSize = ucode.size();
+    createInfo.pCode = reinterpret_cast<const uint32_t*>(ucode.data());
+
+    VkShaderModule shaderModule;
+    if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create shader module");
+    }
+
+    m_shaderModules.push_back(shaderModule);
+
+    VkPipelineShaderStageCreateInfo shaderStageInfo{};
+    shaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    shaderStageInfo.stage = stage;
+    shaderStageInfo.module = shaderModule;
+    shaderStageInfo.pName = "main";
+
+    return shaderStageInfo;
 }
 
 void VulkanCore::CleanUp()
@@ -375,6 +399,11 @@ void VulkanCore::CleanUp()
     }
 
     m_ui.CleanUp();
+
+    for (auto& shaderModule : m_shaderModules)
+    {
+        vkDestroyShaderModule(m_logicalDevice, shaderModule, nullptr);
+    }
 
     delete m_vulkanDevice;
     vkDestroyInstance(m_instance, nullptr);

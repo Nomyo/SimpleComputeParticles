@@ -1,8 +1,8 @@
-#include <SlimeSimulation.h>
+#include <ParticleSimulation.h>
 
 int main() {
 
-    SlimeSimulation *simulation = new SlimeSimulation();
+    ParticleSimulation *simulation = new ParticleSimulation();
     simulation->SetupWindow();
     simulation->InitVulkan();
     simulation->Prepare();

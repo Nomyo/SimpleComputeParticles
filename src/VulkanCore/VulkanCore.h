@@ -50,6 +50,9 @@ public:
 protected:
     virtual VkResult CreateInstance(bool enableValidation);
     virtual void OnUpdateUIOverlay(VulkanIamGuiWrapper* ui);
+
+    VkPipelineShaderStageCreateInfo LoadShader(VkDevice device, const std::string& filepath, VkShaderStageFlagBits stage);
+
 protected:
     uint32_t m_width = 1920;
     uint32_t m_height = 1200;
@@ -116,6 +119,9 @@ protected:
 
     // Contains command buffers and semaphores to be presented to the queue
     VkSubmitInfo m_submitInfo;
+
+    // List of shader modules created (stored for cleanup)
+    std::vector<VkShaderModule> m_shaderModules;
 
     // Ui wrapper
     VulkanIamGuiWrapper m_ui;

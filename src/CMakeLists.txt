@@ -1,6 +1,6 @@
-add_executable(Slime_simulation
+add_executable(ParticleSimulation
     Main.cpp
-    SlimeSimulation.cpp
+    ParticleSimulation.cpp
     VulkanCore/VulkanCamera.cpp
     VulkanCore/VulkanCore.cpp
     VulkanCore/VulkanImguiWrapper.cpp
@@ -9,11 +9,11 @@ add_executable(Slime_simulation
     VulkanCore/VulkanDevice.cpp)
 
 
-set_property(TARGET Slime_simulation PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:Slime_simulation>")
+set_property(TARGET ParticleSimulation PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:ParticleSimulation>")
 
-target_include_directories(Slime_simulation PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" VulkanCore)
-target_link_libraries(Slime_simulation glm ktx imgui glfw)
+target_include_directories(ParticleSimulation PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" VulkanCore)
+target_link_libraries(ParticleSimulation glm ktx imgui glfw)
 
-target_link_libraries(Slime_simulation Vulkan::Vulkan)
+target_link_libraries(ParticleSimulation Vulkan::Vulkan)
 
-add_dependencies(Slime_simulation Shaders)
+add_dependencies(ParticleSimulation Shaders)
